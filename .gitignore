@@ -1,0 +1,7 @@
+# Dev dependencies (runtime libraries live in /3rdparty and ARE committed)
+/vendor/
+/node_modules/
+.phpunit.result.cache
+/.phpunit.cache/
+.DS_Store
+/.vscode/

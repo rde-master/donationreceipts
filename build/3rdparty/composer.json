@@ -1,0 +1,17 @@
+{
+    "name": "rde-master/donationreceipts-3rdparty",
+    "description": "Runtime libraries shipped with the app (committed under /3rdparty). Mail uses the symfony/mailer that Nextcloud itself ships.",
+    "license": "AGPL-3.0-or-later",
+    "require": {
+        "setasign/fpdf": "^1.8",
+        "setasign/fpdi": "^2.6"
+    },
+    "config": {
+        "vendor-dir": "../../3rdparty",
+        "platform": {
+            "php": "8.1.0"
+        },
+        "optimize-autoloader": true,
+        "classmap-authoritative": true
+    }
+}

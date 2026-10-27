@@ -1,0 +1,44 @@
+/* Shared layout of all views in the app content area. */
+.dr-page {
+	padding: calc(var(--default-grid-baseline) * 4) calc(var(--default-grid-baseline) * 4) calc(var(--default-grid-baseline) * 4) calc(var(--default-grid-baseline) * 12);
+	max-width: 900px;
+}
+
+.dr-page h2 {
+	margin-top: calc(var(--default-grid-baseline) * 2);
+}
+
+.dr-form {
+	max-width: 700px;
+}
+
+.dr-row {
+	display: flex;
+	gap: calc(var(--default-grid-baseline) * 2);
+	align-items: flex-end;
+}
+
+.dr-row > * {
+	flex: 1;
+}
+
+.dr-row > .dr-zip {
+	flex: 0 0 120px;
+}
+
+.dr-actions {
+	display: flex;
+	gap: calc(var(--default-grid-baseline) * 2);
+	margin-top: calc(var(--default-grid-baseline) * 4);
+}
+
+@media (max-width: 600px) {
+	.dr-row {
+		flex-direction: column;
+		align-items: stretch;
+	}
+
+	.dr-row > .dr-zip {
+		flex: 1;
+	}
+}
