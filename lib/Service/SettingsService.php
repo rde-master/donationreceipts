@@ -7,6 +7,7 @@ namespace OCA\DonationReceipts\Service;
 use OCA\DonationReceipts\AppInfo\Application;
 use OCA\DonationReceipts\Exception\ValidationException;
 use OCP\IAppConfig;
+use OCP\Security\ICrypto;
 
 /**
  * The app-wide settings every member of the allowed group may change
@@ -44,7 +45,21 @@ class SettingsService {
         // Ablage: Nextcloud file IDs of the two main folders (set via StorageService)
         'folder_unsigned_id' => ['type' => 'int', 'default' => 0],
         'folder_signed_id' => ['type' => 'int', 'default' => 0],
+
+        // E-Mail über eigenen SMTP-Zugang (Passwort separat, verschlüsselt)
+        'smtp_host' => ['type' => 'string', 'default' => ''],
+        'smtp_port' => ['type' => 'int', 'default' => 587],
+        'smtp_security' => ['type' => 'string', 'default' => self::SMTP_STARTTLS],
+        'smtp_user' => ['type' => 'string', 'default' => ''],
+        'smtp_from_name' => ['type' => 'string', 'default' => ''],
+        'smtp_from_email' => ['type' => 'string', 'default' => ''],
+        'mail_subject' => ['type' => 'string', 'default' => MailTemplate::DEFAULT_SUBJECT],
+        'mail_body' => ['type' => 'string', 'default' => MailTemplate::DEFAULT_BODY],
     ];
+
+    public const SMTP_STARTTLS = 'starttls';
+    public const SMTP_SSL = 'ssl';
+    private const SMTP_PASSWORD_KEY = 'smtp_password';
 
     private const DATE_KEYS = ['exemption_date', 'statute_date'];
 
@@ -53,7 +68,37 @@ class SettingsService {
 
     public function __construct(
         private IAppConfig $appConfig,
+        private ICrypto $crypto,
     ) {
+    }
+
+    public function setSmtpPassword(string $password): void {
+        $this->appConfig->setValueString(Application::APP_ID, self::SMTP_PASSWORD_KEY, $password === '' ? '' : $this->crypto->encrypt($password), sensitive: true);
+    }
+
+    public function getSmtpPassword(): string {
+        $stored = $this->appConfig->getValueString(Application::APP_ID, self::SMTP_PASSWORD_KEY, '');
+        return $stored === '' ? '' : $this->crypto->decrypt($stored);
+    }
+
+    public function hasSmtpPassword(): bool {
+        return $this->appConfig->getValueString(Application::APP_ID, self::SMTP_PASSWORD_KEY, '') !== '';
+    }
+
+    /**
+     * Mail settings that are still missing for sending.
+     *
+     * @return list<string>
+     */
+    public function missingForMail(): array {
+        $missing = [];
+        if ($this->getString('smtp_host') === '') {
+            $missing[] = 'SMTP-Server';
+        }
+        if ($this->getString('smtp_from_email') === '') {
+            $missing[] = 'Absenderadresse';
+        }
+        return $missing;
     }
 
     /**
@@ -154,6 +199,9 @@ class SettingsService {
             if (!is_int($value)) {
                 throw new ValidationException('Ungültiger Wert für ' . $key);
             }
+            if ($key === 'smtp_port' && ($value < 1 || $value > 65535)) {
+                throw new ValidationException('Ungültiger SMTP-Port');
+            }
             return $value;
         }
         if (!is_string($value)) {
@@ -162,6 +210,12 @@ class SettingsService {
         $value = trim($value);
         if ($key === 'tax_mode' && !in_array($value, [self::TAX_MODE_EXEMPTION, self::TAX_MODE_STATUTE], true)) {
             throw new ValidationException('Ungültige Art der Steuerbegünstigung');
+        }
+        if ($key === 'smtp_security' && !in_array($value, [self::SMTP_STARTTLS, self::SMTP_SSL], true)) {
+            throw new ValidationException('Ungültige Verschlüsselung');
+        }
+        if ($key === 'smtp_from_email' && $value !== '' && filter_var($value, FILTER_VALIDATE_EMAIL) === false) {
+            throw new ValidationException('Die Absenderadresse ist ungültig');
         }
         if (in_array($key, self::DATE_KEYS, true) && $value !== '' && !GermanFormat::isIsoDate($value)) {
             throw new ValidationException('Ungültiges Datum für ' . $key);

@@ -25,6 +25,10 @@ return [
         ['name' => 'receipt#update', 'url' => '/api/receipts/{id}', 'verb' => 'PUT', 'requirements' => ['id' => '\d+']],
         ['name' => 'receipt#file', 'url' => '/api/receipts/{id}/file/{variant}', 'verb' => 'GET', 'requirements' => ['id' => '\d+', 'variant' => '(unsigned|signed)']],
 
+        ['name' => 'mail#preview', 'url' => '/api/receipts/{id}/mail', 'verb' => 'GET', 'requirements' => ['id' => '\d+']],
+        ['name' => 'mail#send', 'url' => '/api/receipts/{id}/mail', 'verb' => 'POST', 'requirements' => ['id' => '\d+']],
+        ['name' => 'mail#test', 'url' => '/api/mail/test', 'verb' => 'POST'],
+
         ['name' => 'adminSettings#setGroup', 'url' => '/api/admin/group', 'verb' => 'PUT'],
     ],
 ];

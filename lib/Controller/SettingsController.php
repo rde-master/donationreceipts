@@ -6,6 +6,7 @@ namespace OCA\DonationReceipts\Controller;
 
 use OCA\DonationReceipts\Exception\ValidationException;
 use OCA\DonationReceipts\Service\ImageStore;
+use OCA\DonationReceipts\Service\MailTemplate;
 use OCA\DonationReceipts\Service\ReceiptService;
 use OCA\DonationReceipts\Service\SettingsService;
 use OCA\DonationReceipts\Service\StorageService;
@@ -38,7 +39,13 @@ class SettingsController extends Controller {
     #[NoAdminRequired]
     public function update(array $values): JSONResponse {
         try {
+            // Empty means "unchanged"; the stored password is never sent to the browser.
+            $password = $values['smtp_password'] ?? '';
+            unset($values['smtp_password']);
             $this->settings->update($values);
+            if (is_string($password) && $password !== '') {
+                $this->settings->setSmtpPassword($password);
+            }
         } catch (ValidationException $e) {
             return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
         }
@@ -65,6 +72,9 @@ class SettingsController extends Controller {
                 ImageStore::STAMP => $this->images->exists(ImageStore::STAMP),
             ],
             'nextNumber' => $this->receipts->nextNumber(),
+            'smtpPasswordSet' => $this->settings->hasSmtpPassword(),
+            'mailMissing' => $this->settings->missingForMail(),
+            'placeholders' => MailTemplate::PLACEHOLDERS,
         ];
     }
 }

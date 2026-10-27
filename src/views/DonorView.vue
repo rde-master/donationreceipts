@@ -52,7 +52,10 @@
 			<p v-else-if="!receipts.length" class="dr-muted">
 				Noch keine Bescheinigungen.
 			</p>
-			<ReceiptTable v-else :receipts="receipts" :show-donor="false" />
+			<ReceiptTable v-else
+				:receipts="receipts"
+				:show-donor="false"
+				@sent="(u) => receipts = receipts.map((r) => r.id === u.id ? { ...r, ...u } : r)" />
 		</template>
 
 		<NcDialog v-if="confirmDelete"

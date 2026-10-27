@@ -4,6 +4,27 @@ Alle Änderungen der App, neueste zuerst. Versionen nach [SemVer](https://semver
 Fehlerbehebung erhöht die dritte Stelle, neue Funktionen die zweite, mit der Abnahme kommt 1.0.0.
 Jede Version hat einen Git-Tag `v<version>`.
 
+## 0.5.0 – 2026-10-27
+
+Phase 5: E-Mail.
+
+- Eigener SMTP-Zugang (Server, Port, STARTTLS oder SSL/TLS, Benutzer, Passwort, Absender);
+  das Passwort wird mit dem Nextcloud-Schlüssel verschlüsselt gespeichert und nie an den
+  Browser zurückgegeben.
+- Zugangsdaten und Mails gehen nur über eine verschlüsselte Verbindung: bietet der Server
+  kein STARTTLS an, wird abgebrochen, bevor etwas gesendet wird.
+- Testmail-Knopf (speichert vorher die Einstellungen).
+- E-Mail-Vorlage für Betreff und Text mit Platzhaltern {name}, {nummer}, {betrag}, {datum},
+  {art}, {verein}.
+- Vorschau-Dialog mit Empfänger, Betreff, Text und der unterschriebenen Fassung als Anhang;
+  alles im Dialog änderbar, versendet wird erst mit „Senden“. Fehler bleiben im Dialog stehen.
+- Nach dem Erstellen öffnet sich die Vorschau automatisch (wenn der Spender eine E-Mail-Adresse
+  hat); nach Änderung einer versendeten Bescheinigung wird der erneute Versand angeboten.
+- Senden auch später aus den Listen (Briefumschlag-Knopf bei nicht versendeten oder
+  geänderten Bescheinigungen).
+- Versandzeitpunkt und Empfänger werden an der Bescheinigung gespeichert.
+- Darstellung: lange Beschriftungen in Detailansichten überlappen nicht mehr.
+
 ## 0.4.0 – 2026-10-27
 
 Phase 4: Unterschrift, Stempel, Ablage.

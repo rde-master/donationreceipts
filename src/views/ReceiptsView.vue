@@ -21,7 +21,7 @@
 			</template>
 		</NcEmptyContent>
 		<template v-else>
-			<ReceiptTable :receipts="filtered" />
+			<ReceiptTable :receipts="filtered" @sent="replace" />
 			<p class="dr-muted dr-sum">
 				{{ filtered.length }} Bescheinigungen, Summe {{ formatAmount(sum) }}
 			</p>
@@ -53,6 +53,10 @@ const filtered = computed(() => year.value === ALL
 	? receipts.value
 	: receipts.value.filter((r) => r.number.startsWith(year.value + '-')))
 const sum = computed(() => filtered.value.reduce((total, r) => total + r.amountCents, 0))
+
+function replace(updated) {
+	receipts.value = receipts.value.map((r) => r.id === updated.id ? { ...r, ...updated } : r)
+}
 
 onMounted(async () => {
 	try {

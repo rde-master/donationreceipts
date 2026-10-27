@@ -71,6 +71,69 @@
 				</div>
 			</section>
 
+			<section>
+				<h3>E-Mail-Versand (SMTP)</h3>
+				<p class="dr-muted">
+					Eigener Zugang, unabhängig vom Mailserver der Nextcloud. Zugangsdaten werden nur über
+					eine verschlüsselte Verbindung gesendet.
+				</p>
+				<div class="dr-row">
+					<NcTextField v-model="values.smtp_host" label="Server" placeholder="smtp.example.org" />
+					<NcTextField v-model="smtpPort"
+						type="number"
+						label="Port"
+						class="dr-zip" />
+				</div>
+				<div class="dr-row dr-radios">
+					<NcCheckboxRadioSwitch v-model="values.smtp_security"
+						type="radio"
+						value="starttls"
+						name="smtp_security"
+						@update:model-value="values.smtp_port = 587">
+						STARTTLS (Port 587)
+					</NcCheckboxRadioSwitch>
+					<NcCheckboxRadioSwitch v-model="values.smtp_security"
+						type="radio"
+						value="ssl"
+						name="smtp_security"
+						@update:model-value="values.smtp_port = 465">
+						SSL/TLS (Port 465)
+					</NcCheckboxRadioSwitch>
+				</div>
+				<div class="dr-row">
+					<NcTextField v-model="values.smtp_user" label="Benutzer" autocomplete="off" />
+					<NcPasswordField v-model="smtpPassword"
+						label="Passwort"
+						autocomplete="new-password"
+						:placeholder="smtpPasswordSet ? 'gespeichert – leer lassen zum Behalten' : ''" />
+				</div>
+				<div class="dr-row">
+					<NcTextField v-model="values.smtp_from_name" label="Absendername" />
+					<NcTextField v-model="values.smtp_from_email" type="email" label="Absenderadresse" />
+				</div>
+				<div class="dr-row">
+					<NcTextField v-model="testAddress" type="email" label="Testmail an" />
+					<NcButton :disabled="testing || !testAddress" @click="sendTest">
+						Speichern und Testmail senden
+					</NcButton>
+				</div>
+			</section>
+
+			<section>
+				<h3>E-Mail-Vorlage</h3>
+				<NcTextField v-model="values.mail_subject" label="Betreff" />
+				<NcTextArea v-model="values.mail_body"
+					label="Text"
+					resize="vertical"
+					rows="8" />
+				<p class="dr-muted">
+					Platzhalter:
+					<span v-for="(label, key) in placeholders" :key="key" class="dr-placeholder">
+						<code>{{ '{' + key + '}' }}</code> {{ label }}
+					</span>
+				</p>
+			</section>
+
 			<div class="dr-actions">
 				<NcButton type="submit" variant="primary" :disabled="saving">
 					Speichern
@@ -121,15 +184,17 @@
 </template>
 
 <script setup>
+import { getCurrentUser } from '@nextcloud/auth'
 import { getFilePickerBuilder, showError, showSuccess } from '@nextcloud/dialogs'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwitch'
 import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
 import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
+import NcPasswordField from '@nextcloud/vue/components/NcPasswordField'
 import NcTextArea from '@nextcloud/vue/components/NcTextArea'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
 import { computed, onMounted, ref } from 'vue'
-import { errorMessage, getSettings, setMainFolder, updateSettings } from '../api.js'
+import { errorMessage, getSettings, sendTestMail, setMainFolder, updateSettings } from '../api.js'
 import ImageSetting from '../components/ImageSetting.vue'
 
 const FOLDER_LABELS = {
@@ -144,6 +209,17 @@ const missing = ref([])
 const folders = ref({})
 const images = ref({})
 const nextNumber = ref('')
+const smtpPassword = ref('')
+const smtpPasswordSet = ref(false)
+const placeholders = ref({})
+const testAddress = ref(getCurrentUser()?.email ?? '')
+const testing = ref(false)
+
+// NcTextField type=number still yields a string
+const smtpPort = computed({
+	get: () => String(values.value.smtp_port ?? ''),
+	set: (v) => { values.value.smtp_port = parseInt(v, 10) || 0 },
+})
 
 // § 63 Abs. 5 AO: Freistellungsbescheid max. 5, Feststellung nach § 60a max. 3 Jahre alt.
 const bescheidAgeWarning = computed(() => {
@@ -166,6 +242,23 @@ function apply(data) {
 	folders.value = data.folders
 	images.value = data.images
 	nextNumber.value = data.nextNumber
+	smtpPasswordSet.value = data.smtpPasswordSet
+	placeholders.value = data.placeholders
+	smtpPassword.value = ''
+}
+
+async function sendTest() {
+	testing.value = true
+	try {
+		if (await save()) {
+			await sendTestMail(testAddress.value)
+			showSuccess(`Testmail an ${testAddress.value} gesendet`)
+		}
+	} catch (e) {
+		showError(errorMessage(e))
+	} finally {
+		testing.value = false
+	}
 }
 
 async function reload() {
@@ -223,13 +316,18 @@ onMounted(async () => {
 	}
 })
 
+/**
+ * @return {Promise<boolean>} whether saving worked
+ */
 async function save() {
 	saving.value = true
 	try {
-		apply(await updateSettings(values.value))
+		apply(await updateSettings({ ...values.value, smtp_password: smtpPassword.value }))
 		showSuccess('Einstellungen gespeichert')
+		return true
 	} catch (e) {
 		showError(errorMessage(e))
+		return false
 	} finally {
 		saving.value = false
 	}
@@ -237,6 +335,15 @@ async function save() {
 </script>
 
 <style scoped>
+.dr-radios > * {
+	flex: 0 0 auto;
+}
+
+.dr-placeholder {
+	display: inline-block;
+	margin-inline-end: calc(var(--default-grid-baseline) * 3);
+}
+
 .dr-folder {
 	display: flex;
 	align-items: center;

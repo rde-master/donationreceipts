@@ -5,6 +5,12 @@
 			<div class="dr-header">
 				<h2>Bescheinigung {{ receipt.number }}</h2>
 				<div class="dr-actions">
+					<NcButton variant="primary" @click="sendOpen = true">
+						<template #icon>
+							<NcIconSvgWrapper :path="mdiEmailOutline" />
+						</template>
+						{{ receipt.sentAt ? 'Erneut senden' : 'Per E-Mail senden' }}
+					</NcButton>
 					<NcButton :to="{ name: 'receipt-edit', params: { id: receipt.id } }">
 						<template #icon>
 							<NcIconSvgWrapper :path="mdiPencil" />
@@ -83,11 +89,17 @@
 				<dd>{{ formatDateTime(receipt.createdAt) }} von {{ receipt.createdBy }}</dd>
 			</dl>
 		</template>
+
+		<SendDialog v-if="sendOpen && receipt"
+			:receipt="receipt"
+			:note="sendNote"
+			@sent="receipt = { ...receipt, ...$event }"
+			@close="sendOpen = false" />
 	</div>
 </template>
 
 <script setup>
-import { mdiFilePdfBox, mdiFolderOutline, mdiPencil } from '@mdi/js'
+import { mdiEmailOutline, mdiFilePdfBox, mdiFolderOutline, mdiPencil } from '@mdi/js'
 import { showError } from '@nextcloud/dialogs'
 import { generateUrl } from '@nextcloud/router'
 import NcButton from '@nextcloud/vue/components/NcButton'
@@ -95,15 +107,20 @@ import NcIconSvgWrapper from '@nextcloud/vue/components/NcIconSvgWrapper'
 import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
 import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
 import { onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { errorMessage, getDonor, getReceipt, receiptFileUrl } from '../api.js'
+import SendDialog from '../components/SendDialog.vue'
 import { formatAmount, formatDate, formatDateTime, ORIGINS } from '../format.js'
 
 const props = defineProps({
 	id: { type: [String, Number], required: true },
 })
 
+const route = useRoute()
 const receipt = ref(null)
 const donor = ref(null)
+const sendOpen = ref(false)
+const sendNote = ref('')
 
 const VARIANTS = {
 	signed: 'PDF mit Unterschrift',
@@ -118,6 +135,13 @@ onMounted(async () => {
 	try {
 		receipt.value = await getReceipt(props.id)
 		donor.value = await getDonor(receipt.value.donorId)
+		// right after creating / after changing a sent receipt: offer sending
+		if (route.query.senden && !receipt.value.sentAt && donor.value.email) {
+			sendOpen.value = true
+		} else if (route.query.erneut && receipt.value.changedAfterSent) {
+			sendNote.value = 'Die Bescheinigung wurde nach dem Versand geändert. Soll der Spender die neue Fassung bekommen?'
+			sendOpen.value = true
+		}
 	} catch (e) {
 		showError(errorMessage(e))
 	}

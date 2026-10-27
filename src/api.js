@@ -79,6 +79,18 @@ export async function deleteImage(kind) {
 	return (await axios.delete(base(`/images/${kind}`))).data
 }
 
+export async function getMailPreview(id) {
+	return (await axios.get(base(`/receipts/${id}/mail`))).data
+}
+
+export async function sendReceiptMail(id, mail) {
+	return (await axios.post(base(`/receipts/${id}/mail`), mail)).data
+}
+
+export async function sendTestMail(to) {
+	return (await axios.post(base('/mail/test'), { to })).data
+}
+
 export async function setAllowedGroup(groupId) {
 	return (await axios.put(base('/admin/group'), { groupId })).data
 }

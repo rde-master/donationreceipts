@@ -7,6 +7,7 @@ namespace OCA\DonationReceipts\Tests\Unit\Service;
 use OCA\DonationReceipts\Exception\ValidationException;
 use OCA\DonationReceipts\Service\SettingsService;
 use OCP\IAppConfig;
+use OCP\Security\ICrypto;
 use PHPUnit\Framework\TestCase;
 
 class SettingsServiceTest extends TestCase {
@@ -27,7 +28,7 @@ class SettingsServiceTest extends TestCase {
         $config->method('setValueString')->willReturnCallback($set);
         $config->method('setValueBool')->willReturnCallback($set);
         $config->method('setValueInt')->willReturnCallback($set);
-        $this->service = new SettingsService($config);
+        $this->service = new SettingsService($config, $this->createMock(ICrypto::class));
     }
 
     public function testDefaults(): void {

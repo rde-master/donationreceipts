@@ -172,7 +172,8 @@ async function save() {
 			? await updateReceipt(props.id, payload)
 			: await createReceipt(props.donorId, payload)
 		showSuccess(props.id ? 'Bescheinigung gespeichert' : `Bescheinigung ${saved.number} erstellt`)
-		router.push({ name: 'receipt', params: { id: saved.id } })
+		const query = props.id ? (original.value?.sentAt ? { erneut: '1' } : {}) : { senden: '1' }
+		router.push({ name: 'receipt', params: { id: saved.id }, query })
 	} catch (e) {
 		showError(errorMessage(e))
 	} finally {
