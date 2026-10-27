@@ -41,6 +41,26 @@ export async function deleteDonor(id) {
 	return (await axios.delete(base(`/donors/${id}`))).data
 }
 
+export async function listReceipts(params = {}) {
+	return (await axios.get(base('/receipts'), { params })).data
+}
+
+export async function getReceipt(id) {
+	return (await axios.get(base(`/receipts/${id}`))).data
+}
+
+export async function createReceipt(donorId, receipt) {
+	return (await axios.post(base(`/donors/${donorId}/receipts`), { receipt })).data
+}
+
+export async function updateReceipt(id, receipt) {
+	return (await axios.put(base(`/receipts/${id}`), { receipt })).data
+}
+
+export function receiptPdfUrl(id) {
+	return base(`/receipts/${id}/pdf`)
+}
+
 export async function setAllowedGroup(groupId) {
 	return (await axios.put(base('/admin/group'), { groupId })).data
 }

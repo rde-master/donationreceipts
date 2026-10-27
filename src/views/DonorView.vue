@@ -11,7 +11,7 @@
 						</template>
 						Bearbeiten
 					</NcButton>
-					<NcButton variant="error" @click="confirmDelete = true">
+					<NcButton v-if="receipts && !receipts.length" variant="error" @click="confirmDelete = true">
 						<template #icon>
 							<NcIconSvgWrapper :path="mdiDelete" />
 						</template>
@@ -38,6 +38,21 @@
 					</dd>
 				</template>
 			</dl>
+
+			<div class="dr-header">
+				<h3>Bescheinigungen</h3>
+				<NcButton variant="primary" :to="{ name: 'receipt-new', params: { donorId: donor.id } }">
+					<template #icon>
+						<NcIconSvgWrapper :path="mdiPlus" />
+					</template>
+					Neue Bescheinigung
+				</NcButton>
+			</div>
+			<NcLoadingIcon v-if="!receipts" :size="24" />
+			<p v-else-if="!receipts.length" class="dr-muted">
+				Noch keine Bescheinigungen.
+			</p>
+			<ReceiptTable v-else :receipts="receipts" :show-donor="false" />
 		</template>
 
 		<NcDialog v-if="confirmDelete"
@@ -49,7 +64,7 @@
 </template>
 
 <script setup>
-import { mdiDelete, mdiPencil } from '@mdi/js'
+import { mdiDelete, mdiPencil, mdiPlus } from '@mdi/js'
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcDialog from '@nextcloud/vue/components/NcDialog'
@@ -57,7 +72,8 @@ import NcIconSvgWrapper from '@nextcloud/vue/components/NcIconSvgWrapper'
 import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { deleteDonor, errorMessage, getDonor } from '../api.js'
+import { deleteDonor, errorMessage, getDonor, listReceipts } from '../api.js'
+import ReceiptTable from '../components/ReceiptTable.vue'
 
 const props = defineProps({
 	id: { type: [String, Number], required: true },
@@ -65,6 +81,7 @@ const props = defineProps({
 
 const router = useRouter()
 const donor = ref(null)
+const receipts = ref(null)
 const confirmDelete = ref(false)
 
 const addressLines = computed(() => [
@@ -95,6 +112,7 @@ async function remove() {
 onMounted(async () => {
 	try {
 		donor.value = await getDonor(props.id)
+		receipts.value = (await listReceipts({ donorId: props.id })).receipts
 	} catch (e) {
 		showError(errorMessage(e))
 	}

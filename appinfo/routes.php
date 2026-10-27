@@ -15,6 +15,12 @@ return [
         ['name' => 'donor#update', 'url' => '/api/donors/{id}', 'verb' => 'PUT', 'requirements' => ['id' => '\d+']],
         ['name' => 'donor#destroy', 'url' => '/api/donors/{id}', 'verb' => 'DELETE', 'requirements' => ['id' => '\d+']],
 
+        ['name' => 'receipt#index', 'url' => '/api/receipts', 'verb' => 'GET'],
+        ['name' => 'receipt#create', 'url' => '/api/donors/{donorId}/receipts', 'verb' => 'POST', 'requirements' => ['donorId' => '\d+']],
+        ['name' => 'receipt#show', 'url' => '/api/receipts/{id}', 'verb' => 'GET', 'requirements' => ['id' => '\d+']],
+        ['name' => 'receipt#update', 'url' => '/api/receipts/{id}', 'verb' => 'PUT', 'requirements' => ['id' => '\d+']],
+        ['name' => 'receipt#pdf', 'url' => '/api/receipts/{id}/pdf', 'verb' => 'GET', 'requirements' => ['id' => '\d+']],
+
         ['name' => 'adminSettings#setGroup', 'url' => '/api/admin/group', 'verb' => 'PUT'],
     ],
 ];

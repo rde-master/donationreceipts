@@ -4,6 +4,19 @@
 	max-width: 900px;
 }
 
+.dr-page--wide {
+	max-width: 1100px;
+}
+
+.dr-muted {
+	color: var(--color-text-maxcontrast);
+}
+
+.dr-warning {
+	color: var(--color-warning-text);
+	font-weight: bold;
+}
+
 .dr-page h2 {
 	margin-top: calc(var(--default-grid-baseline) * 2);
 }

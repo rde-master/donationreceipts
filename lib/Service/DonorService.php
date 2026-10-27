@@ -6,6 +6,7 @@ namespace OCA\DonationReceipts\Service;
 
 use OCA\DonationReceipts\Db\Donor;
 use OCA\DonationReceipts\Db\DonorMapper;
+use OCA\DonationReceipts\Db\ReceiptMapper;
 use OCA\DonationReceipts\Exception\ValidationException;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\Mail\IMailer;
@@ -15,6 +16,7 @@ class DonorService {
 
     public function __construct(
         private DonorMapper $mapper,
+        private ReceiptMapper $receipts,
         private IMailer $mailer,
         private ITimeFactory $time,
     ) {
@@ -69,10 +71,17 @@ class DonorService {
     }
 
     /**
+     * Only donors without receipts can be deleted.
+     *
+     * @throws ValidationException
      * @throws \OCP\AppFramework\Db\DoesNotExistException
      */
     public function delete(int $id): void {
-        $this->mapper->delete($this->mapper->find($id));
+        $donor = $this->mapper->find($id);
+        if ($this->receipts->countByDonor($id) > 0) {
+            throw new ValidationException('Der Spender hat Bescheinigungen und kann nicht gelöscht werden');
+        }
+        $this->mapper->delete($donor);
     }
 
     /**

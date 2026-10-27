@@ -4,6 +4,25 @@ Alle Änderungen der App, neueste zuerst. Versionen nach [SemVer](https://semver
 Fehlerbehebung erhöht die dritte Stelle, neue Funktionen die zweite, mit der Abnahme kommt 1.0.0.
 Jede Version hat einen Git-Tag `v<version>`.
 
+## 0.3.0 – 2026-10-27
+
+Phase 3: Bescheinigungen und PDF.
+
+- Tabellen `dr_receipts` und `dr_counters` (Migration).
+- Bescheinigungen für Geld- und Sachzuwendungen aus der Spenderansicht heraus; Liste aller
+  Bescheinigungen mit Jahresfilter und Summe; Detail- und Bearbeitungsansicht.
+- Nummernkreis `JJJJ-NNNN`, je Erstellungsjahr (deutsche Zeit) ab 1, vergeben in einer
+  Datenbank-Transaktion mit Zeilensperre; die Nummer ändert sich danach nicht mehr.
+- Betrag in Buchstaben (deutsche Schreibweise, Euro und Cent).
+- Ausfüllen der amtlichen Vorlagen 034122/034123 an vermessenen Positionen; Schrift wird bei
+  langen Texten verkleinert. Nummer klein oben rechts, „Ort, Datum“ und Unterzeichner über
+  der Unterschriftslinie.
+- Sachzuwendung: Herkunft (Betriebs-/Privatvermögen/keine Angaben) und Kreuz „Unterlagen zur
+  Wertermittlung liegen vor“ wie im Muster.
+- Bescheinigungen werden erst erstellt, wenn die Einstellungen vollständig sind.
+- Spender mit Bescheinigungen können nicht gelöscht werden.
+- Warnung beim Ändern einer bereits versendeten Bescheinigung.
+
 ## 0.2.0 – 2026-10-27
 
 Phase 2: Spender.

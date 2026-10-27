@@ -6,6 +6,7 @@ namespace OCA\DonationReceipts\Tests\Unit\Service;
 
 use OCA\DonationReceipts\Db\Donor;
 use OCA\DonationReceipts\Db\DonorMapper;
+use OCA\DonationReceipts\Db\ReceiptMapper;
 use OCA\DonationReceipts\Exception\ValidationException;
 use OCA\DonationReceipts\Service\DonorService;
 use OCP\AppFramework\Utility\ITimeFactory;
@@ -24,7 +25,7 @@ class DonorServiceTest extends TestCase {
         );
         $time = $this->createMock(ITimeFactory::class);
         $time->method('getTime')->willReturn(1_800_000_000);
-        $this->service = new DonorService($mapper, $mailer, $time);
+        $this->service = new DonorService($mapper, $this->createMock(ReceiptMapper::class), $mailer, $time);
     }
 
     public function testCreatePerson(): void {

@@ -7,6 +7,11 @@
 						<NcIconSvgWrapper :path="mdiAccountGroupOutline" />
 					</template>
 				</NcAppNavigationItem>
+				<NcAppNavigationItem name="Bescheinigungen" :to="{ name: 'receipts' }" :active="route.path.startsWith('/bescheinigungen')">
+					<template #icon>
+						<NcIconSvgWrapper :path="mdiFileDocumentOutline" />
+					</template>
+				</NcAppNavigationItem>
 			</template>
 			<template #footer>
 				<NcAppNavigationItem name="Einstellungen" :to="{ name: 'settings' }">
@@ -17,13 +22,14 @@
 			</template>
 		</NcAppNavigation>
 		<NcAppContent>
-			<RouterView />
+			<!-- keyed: views load their data on mount, so a new route needs a new instance -->
+			<RouterView :key="route.fullPath" />
 		</NcAppContent>
 	</NcContent>
 </template>
 
 <script setup>
-import { mdiAccountGroupOutline, mdiCogOutline } from '@mdi/js'
+import { mdiAccountGroupOutline, mdiCogOutline, mdiFileDocumentOutline } from '@mdi/js'
 import NcAppContent from '@nextcloud/vue/components/NcAppContent'
 import NcAppNavigation from '@nextcloud/vue/components/NcAppNavigation'
 import NcAppNavigationItem from '@nextcloud/vue/components/NcAppNavigationItem'
