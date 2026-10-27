@@ -4,6 +4,16 @@ Alle Änderungen der App, neueste zuerst. Versionen nach [SemVer](https://semver
 Fehlerbehebung erhöht die dritte Stelle, neue Funktionen die zweite, mit der Abnahme kommt 1.0.0.
 Jede Version hat einen Git-Tag `v<version>`.
 
+## 0.2.0 – 2026-10-27
+
+Phase 2: Spender.
+
+- Tabelle `dr_donors` (Migration), Person oder Firma, Anschrift, E-Mail, Notiz.
+- Spenderliste mit Suche (alle Suchwörter müssen passen, z. B. „max mül“), sortiert nach
+  Nachname bzw. Firmenname.
+- Anlegen, Bearbeiten, Detailansicht und Löschen.
+- Fehlerbehebung: Nicht-Mitglieder bekommen bei API-Aufrufen JSON statt einer HTML-Fehlerseite.
+
 ## 0.1.0 – 2026-10-27
 
 Phase 1: Grundgerüst.

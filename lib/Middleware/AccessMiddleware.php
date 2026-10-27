@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\DonationReceipts\Middleware;
 
 use OCA\DonationReceipts\Attribute\AccessGroupExempt;
+use OCA\DonationReceipts\Controller\PageController;
 use OCA\DonationReceipts\Exception\AccessDeniedException;
 use OCA\DonationReceipts\Service\AccessService;
 use OCP\AppFramework\Controller;
@@ -42,7 +43,7 @@ class AccessMiddleware extends Middleware {
         if (!$exception instanceof AccessDeniedException) {
             throw $exception;
         }
-        if (str_starts_with($methodName, 'index')) {
+        if ($controller instanceof PageController) {
             return new TemplateResponse('core', '403', ['message' => $exception->getMessage()], TemplateResponse::RENDER_AS_GUEST, Http::STATUS_FORBIDDEN);
         }
         return new JSONResponse(['error' => $exception->getMessage()], Http::STATUS_FORBIDDEN);
