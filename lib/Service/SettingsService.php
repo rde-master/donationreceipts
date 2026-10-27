@@ -40,9 +40,16 @@ class SettingsService {
         'sign_place' => ['type' => 'string', 'default' => ''],
         'signer_name' => ['type' => 'string', 'default' => ''],
         'signer_function' => ['type' => 'string', 'default' => ''],
+
+        // Ablage: Nextcloud file IDs of the two main folders (set via StorageService)
+        'folder_unsigned_id' => ['type' => 'int', 'default' => 0],
+        'folder_signed_id' => ['type' => 'int', 'default' => 0],
     ];
 
     private const DATE_KEYS = ['exemption_date', 'statute_date'];
+
+    /** Only set through their own services (with access checks), never from the settings form. */
+    private const INTERNAL_KEYS = ['folder_unsigned_id', 'folder_signed_id'];
 
     public function __construct(
         private IAppConfig $appConfig,
@@ -75,15 +82,19 @@ class SettingsService {
 
     /**
      * Applies a partial update; unknown keys are rejected so typos in the
-     * frontend don't get silently lost.
+     * frontend don't get silently lost. Internal keys are skipped unless
+     * $internal is set.
      *
      * @param array<string, mixed> $values
      * @throws ValidationException
      */
-    public function update(array $values): void {
+    public function update(array $values, bool $internal = false): void {
         $normalized = [];
         foreach ($values as $key => $value) {
             $def = self::SCHEMA[$key] ?? throw new ValidationException('Unbekannte Einstellung: ' . $key);
+            if (!$internal && in_array($key, self::INTERNAL_KEYS, true)) {
+                continue;
+            }
             $normalized[$key] = $this->normalize($key, $def['type'], $value);
         }
         foreach ($normalized as $key => $value) {
@@ -122,6 +133,12 @@ class SettingsService {
             if (trim($this->getString($key)) === '') {
                 $missing[] = $label;
             }
+        }
+        if ($this->get('folder_unsigned_id') === 0) {
+            $missing[] = 'Hauptordner „nicht unterschrieben“';
+        }
+        if ($this->get('folder_signed_id') === 0) {
+            $missing[] = 'Hauptordner „unterschrieben“';
         }
         return $missing;
     }

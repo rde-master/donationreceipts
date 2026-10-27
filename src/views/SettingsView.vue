@@ -76,12 +76,52 @@
 					Speichern
 				</NcButton>
 			</div>
+
+			<section>
+				<h3>Unterschrift und Stempel</h3>
+				<p class="dr-muted">
+					PNG mit transparentem Hintergrund. Die Bilder liegen im geschützten Datenbereich der App
+					und werden sofort gespeichert.
+				</p>
+				<ImageSetting kind="signature"
+					label="Unterschrift"
+					:present="images.signature"
+					@changed="reload" />
+				<ImageSetting kind="stamp"
+					label="Stempel"
+					:present="images.stamp"
+					@changed="reload" />
+			</section>
+
+			<section>
+				<h3>Ablage</h3>
+				<p class="dr-muted">
+					In beiden Hauptordnern legt die App je Spender einen Unterordner an. Alle Berechtigten
+					brauchen dort Schreibrecht, z. B. über einen Team-Ordner.
+				</p>
+				<div v-for="(label, variant) in FOLDER_LABELS" :key="variant" class="dr-folder">
+					<div>
+						<strong>{{ label }}</strong>
+						<div :class="folders[variant] ? '' : 'dr-muted'">
+							{{ folders[variant] || 'nicht gewählt' }}
+						</div>
+					</div>
+					<NcButton @click="pickFolder(variant, label)">
+						Ordner wählen
+					</NcButton>
+				</div>
+			</section>
+
+			<section>
+				<h3>Nummernkreis</h3>
+				<p>Format <code>JJJJ-NNNN</code>, jedes Jahr ab 0001. Nächste Nummer: <strong>{{ nextNumber }}</strong></p>
+			</section>
 		</form>
 	</div>
 </template>
 
 <script setup>
-import { showError, showSuccess } from '@nextcloud/dialogs'
+import { getFilePickerBuilder, showError, showSuccess } from '@nextcloud/dialogs'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwitch'
 import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
@@ -89,12 +129,21 @@ import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
 import NcTextArea from '@nextcloud/vue/components/NcTextArea'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
 import { computed, onMounted, ref } from 'vue'
-import { errorMessage, getSettings, updateSettings } from '../api.js'
+import { errorMessage, getSettings, setMainFolder, updateSettings } from '../api.js'
+import ImageSetting from '../components/ImageSetting.vue'
+
+const FOLDER_LABELS = {
+	unsigned: 'Hauptordner „nicht unterschrieben“',
+	signed: 'Hauptordner „unterschrieben“',
+}
 
 const loading = ref(true)
 const saving = ref(false)
 const values = ref({})
 const missing = ref([])
+const folders = ref({})
+const images = ref({})
+const nextNumber = ref('')
 
 // § 63 Abs. 5 AO: Freistellungsbescheid max. 5, Feststellung nach § 60a max. 3 Jahre alt.
 const bescheidAgeWarning = computed(() => {
@@ -114,6 +163,54 @@ const bescheidAgeWarning = computed(() => {
 function apply(data) {
 	values.value = { ...data.values }
 	missing.value = data.missing
+	folders.value = data.folders
+	images.value = data.images
+	nextNumber.value = data.nextNumber
+}
+
+async function reload() {
+	try {
+		const data = await getSettings()
+		// keep unsaved form input, refresh the rest
+		missing.value = data.missing
+		folders.value = data.folders
+		images.value = data.images
+		nextNumber.value = data.nextNumber
+	} catch (e) {
+		showError(errorMessage(e))
+	}
+}
+
+async function pickFolder(variant, label) {
+	let picked = null
+	const picker = getFilePickerBuilder(label + ' wählen')
+		.setMultiSelect(false)
+		.allowDirectories(true)
+		.setMimeTypeFilter(['httpd/unix-directory'])
+		// Without a selection the picker hands over the folder currently open.
+		.setButtonFactory((nodes) => [{
+			label: nodes[0]?.basename ? `„${nodes[0].basename}“ wählen` : 'Wählen',
+			variant: 'primary',
+			disabled: !nodes.length,
+			callback: (selected) => { picked = selected[0] },
+		}])
+		.build()
+	try {
+		await picker.pickNodes()
+	} catch {
+		return // closed without picking
+	}
+	if (!picked) {
+		return
+	}
+	try {
+		const data = await setMainFolder(variant, picked.fileid)
+		folders.value = data.folders
+		missing.value = data.missing
+		showSuccess('Ordner gespeichert')
+	} catch (e) {
+		showError(errorMessage(e))
+	}
 }
 
 onMounted(async () => {
@@ -140,6 +237,13 @@ async function save() {
 </script>
 
 <style scoped>
+.dr-folder {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: calc(var(--default-grid-baseline) * 4);
+}
+
 section {
 	margin-bottom: calc(var(--default-grid-baseline) * 6);
 	display: flex;

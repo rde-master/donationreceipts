@@ -80,6 +80,14 @@
 	margin-bottom: calc(var(--default-grid-baseline) * 6);
 }
 
+.dr-facts dt,
+.dr-facts dd {
+	/* Nextcloud's global styles give dt a fixed width */
+	width: auto;
+	margin: 0;
+	padding: 0;
+}
+
 .dr-facts dt {
 	color: var(--color-text-maxcontrast);
 }

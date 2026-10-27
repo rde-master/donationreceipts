@@ -4,6 +4,26 @@ Alle Änderungen der App, neueste zuerst. Versionen nach [SemVer](https://semver
 Fehlerbehebung erhöht die dritte Stelle, neue Funktionen die zweite, mit der Abnahme kommt 1.0.0.
 Jede Version hat einen Git-Tag `v<version>`.
 
+## 0.4.0 – 2026-10-27
+
+Phase 4: Unterschrift, Stempel, Ablage.
+
+- Upload von Unterschrift und Stempel (PNG, max. 2 MB) mit Vorschau; gespeichert im
+  geschützten App-Datenbereich (nicht über die Dateien-App erreichbar).
+- Auswahl der Hauptordner „nicht unterschrieben“ und „unterschrieben“ per Ordnerauswahl;
+  gespeichert wird die Datei-ID, geprüft werden Zugriff und Schreibrecht.
+- Beim Erstellen entstehen immer beide Fassungen als
+  `<Hauptordner>/<Spender>/<Nummer>_<Ausstellungsdatum>.pdf`.
+- Spenderordner werden bei Bedarf angelegt; ein gleichnamiger Ordner eines anderen Spenders
+  führt zu „Max Müller (2)“. Umbenannte Spender behalten ihre Ordner (Zuordnung über ID).
+- Änderungen erzeugen beide PDFs neu und ersetzen die Dateien (alte Fassung in der
+  Versionshistorie); ein geändertes Ausstellungsdatum benennt die Dateien um.
+- Nummer, Datenbankeintrag und Ablage in einer Transaktion: schlägt das Ablegen fehl, wird
+  nichts gespeichert, bereits geschriebene Dateien werden entfernt, die Nummer bleibt frei.
+- Detailansicht: beide PDFs öffnen, „In Dateien zeigen“; Hinweis, wenn eine Datei fehlt.
+- Einstellungen zeigen die nächste Nummer; Ordner-IDs lassen sich nicht über das allgemeine
+  Speichern der Einstellungen setzen.
+
 ## 0.3.0 – 2026-10-27
 
 Phase 3: Bescheinigungen und PDF.

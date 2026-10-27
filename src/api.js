@@ -57,8 +57,26 @@ export async function updateReceipt(id, receipt) {
 	return (await axios.put(base(`/receipts/${id}`), { receipt })).data
 }
 
-export function receiptPdfUrl(id) {
-	return base(`/receipts/${id}/pdf`)
+export function receiptFileUrl(id, variant) {
+	return base(`/receipts/${id}/file/${variant}`)
+}
+
+export async function setMainFolder(variant, fileId) {
+	return (await axios.put(base(`/settings/folders/${variant}`), { fileId })).data
+}
+
+export function imageUrl(kind) {
+	return base(`/images/${kind}`) + `?t=${Date.now()}`
+}
+
+export async function uploadImage(kind, file) {
+	const data = new FormData()
+	data.append('image', file)
+	return (await axios.post(base(`/images/${kind}`), data)).data
+}
+
+export async function deleteImage(kind) {
+	return (await axios.delete(base(`/images/${kind}`))).data
 }
 
 export async function setAllowedGroup(groupId) {

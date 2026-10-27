@@ -5,12 +5,6 @@
 			<div class="dr-header">
 				<h2>Bescheinigung {{ receipt.number }}</h2>
 				<div class="dr-actions">
-					<NcButton :href="pdfUrl" target="_blank">
-						<template #icon>
-							<NcIconSvgWrapper :path="mdiFilePdfBox" />
-						</template>
-						PDF
-					</NcButton>
 					<NcButton :to="{ name: 'receipt-edit', params: { id: receipt.id } }">
 						<template #icon>
 							<NcIconSvgWrapper :path="mdiPencil" />
@@ -22,6 +16,31 @@
 
 			<NcNoteCard v-if="receipt.changedAfterSent" type="warning">
 				Nach dem Versand geändert. Der Spender hat noch die alte Fassung.
+			</NcNoteCard>
+
+			<div class="dr-files">
+				<template v-for="(label, variant) in VARIANTS" :key="variant">
+					<NcButton v-if="receipt.files?.[variant]"
+						:href="receiptFileUrl(receipt.id, variant)"
+						target="_blank">
+						<template #icon>
+							<NcIconSvgWrapper :path="mdiFilePdfBox" />
+						</template>
+						{{ label }}
+					</NcButton>
+				</template>
+				<NcButton v-if="receipt.files?.signed"
+					variant="tertiary"
+					:href="filesAppUrl(receipt.files.signed.id)">
+					<template #icon>
+						<NcIconSvgWrapper :path="mdiFolderOutline" />
+					</template>
+					In Dateien zeigen
+				</NcButton>
+			</div>
+			<NcNoteCard v-if="!receipt.files?.unsigned || !receipt.files?.signed" type="warning">
+				Mindestens eine PDF-Datei fehlt im Spenderordner. Speichere die Bescheinigung erneut,
+				um beide Fassungen neu zu erzeugen.
 			</NcNoteCard>
 
 			<dl class="dr-facts">
@@ -68,14 +87,15 @@
 </template>
 
 <script setup>
-import { mdiFilePdfBox, mdiPencil } from '@mdi/js'
+import { mdiFilePdfBox, mdiFolderOutline, mdiPencil } from '@mdi/js'
 import { showError } from '@nextcloud/dialogs'
+import { generateUrl } from '@nextcloud/router'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcIconSvgWrapper from '@nextcloud/vue/components/NcIconSvgWrapper'
 import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
 import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
-import { computed, onMounted, ref } from 'vue'
-import { errorMessage, getDonor, getReceipt, receiptPdfUrl } from '../api.js'
+import { onMounted, ref } from 'vue'
+import { errorMessage, getDonor, getReceipt, receiptFileUrl } from '../api.js'
 import { formatAmount, formatDate, formatDateTime, ORIGINS } from '../format.js'
 
 const props = defineProps({
@@ -84,7 +104,15 @@ const props = defineProps({
 
 const receipt = ref(null)
 const donor = ref(null)
-const pdfUrl = computed(() => receiptPdfUrl(props.id))
+
+const VARIANTS = {
+	signed: 'PDF mit Unterschrift',
+	unsigned: 'PDF ohne Unterschrift',
+}
+
+function filesAppUrl(fileId) {
+	return generateUrl(`/f/${fileId}`)
+}
 
 onMounted(async () => {
 	try {
@@ -95,3 +123,12 @@ onMounted(async () => {
 	}
 })
 </script>
+
+<style scoped>
+.dr-files {
+	display: flex;
+	flex-wrap: wrap;
+	gap: calc(var(--default-grid-baseline) * 2);
+	margin-bottom: calc(var(--default-grid-baseline) * 4);
+}
+</style>

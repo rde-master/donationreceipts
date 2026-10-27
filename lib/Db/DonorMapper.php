@@ -28,6 +28,19 @@ class DonorMapper extends QBMapper {
     }
 
     /**
+     * The donor a folder is assigned to, if any.
+     */
+    public function findByFolderId(int $folderId, bool $signed): ?Donor {
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('*')
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq($signed ? 'folder_signed_id' : 'folder_unsigned_id', $qb->createNamedParameter($folderId, IQueryBuilder::PARAM_INT)))
+            ->setMaxResults(1);
+        $donors = $this->findEntities($qb);
+        return $donors[0] ?? null;
+    }
+
+    /**
      * All donors, optionally filtered by a search term over name, company,
      * e-mail and city. Unsorted - DonorService sorts locale-aware.
      *

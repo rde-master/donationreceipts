@@ -24,6 +24,8 @@ class ReceiptService {
         private DonorMapper $donors,
         private NumberService $numbers,
         private SettingsService $settings,
+        private ImageStore $images,
+        private StorageService $storage,
         private IDBConnection $db,
         private ITimeFactory $time,
     ) {
@@ -54,73 +56,133 @@ class ReceiptService {
     }
 
     /**
-     * Creates the receipt and assigns its number in one transaction.
+     * Creates the receipt: number, database row and both PDFs in their
+     * folders happen in one transaction. If filing fails, nothing is saved
+     * and the number is not used up.
      *
      * @param array<string, mixed> $data
      * @throws ValidationException
      * @throws \OCP\AppFramework\Db\DoesNotExistException unknown donor
      */
     public function create(int $donorId, array $data, string $uid): Receipt {
-        $this->assertSettingsComplete();
-        $this->donors->find($donorId);
+        $this->assertReady();
+        $donor = $this->donors->find($donorId);
 
         $receipt = new Receipt();
         $receipt->setDonorId($donorId);
         $this->apply($receipt, $data);
 
         $now = $this->now();
-        $this->db->beginTransaction();
-        try {
+        return $this->inTransaction(function (array &$created) use ($receipt, $donor, $now, $uid): Receipt {
             $receipt->setNumber($this->numbers->next((int)$now->format('Y')));
             $receipt->setCreatedBy($uid);
             $receipt->setCreatedAt($now->getTimestamp());
             $receipt->setUpdatedAt($now->getTimestamp());
             $receipt = $this->receipts->insert($receipt);
-            $this->db->commit();
-        } catch (\Throwable $e) {
-            $this->db->rollBack();
-            throw $e;
-        }
-        return $receipt;
+            return $this->writeFiles($receipt, $donor, $created);
+        });
     }
 
     /**
-     * Changes everything but the number. A receipt that was already sent is
-     * marked, so the UI can offer to send it again.
+     * Changes everything but the number and replaces both PDFs (the old
+     * ones stay in Nextcloud's version history). A receipt that was already
+     * sent is marked, so the UI can offer to send it again.
      *
      * @param array<string, mixed> $data
      * @throws ValidationException
      * @throws \OCP\AppFramework\Db\DoesNotExistException
      */
     public function update(int $id, array $data): Receipt {
-        $this->assertSettingsComplete();
+        $this->assertReady();
         $receipt = $this->receipts->find($id);
+        $donor = $this->donors->find($receipt->getDonorId());
         $this->apply($receipt, $data);
         if ($receipt->isSent()) {
             $receipt->setChangedAfterSent(true);
         }
         $receipt->setUpdatedAt($this->time->getTime());
-        return $this->receipts->update($receipt);
+
+        return $this->inTransaction(function (array &$created) use ($receipt, $donor): Receipt {
+            return $this->writeFiles($this->receipts->update($receipt), $donor, $created);
+        });
     }
 
     /**
-     * PDF of the receipt, rendered from the current data and settings.
+     * Everything that is still missing before receipts can be created.
      *
-     * @throws \OCP\AppFramework\Db\DoesNotExistException
+     * @return list<string>
      */
-    public function renderPdf(Receipt $receipt, ?string $signaturePath = null, ?string $stampPath = null): string {
-        $donor = $this->donors->find($receipt->getDonorId());
-        return (new ReceiptPdf())->render($receipt, $donor, $this->settings->getAll(), $signaturePath, $stampPath);
+    public function missingRequirements(): array {
+        $missing = $this->settings->missingForReceipts();
+        if (!$this->images->exists(ImageStore::SIGNATURE)) {
+            $missing[] = 'Bild der Unterschrift';
+        }
+        if (!$this->images->exists(ImageStore::STAMP)) {
+            $missing[] = 'Bild des Stempels';
+        }
+        return $missing;
     }
 
     /**
      * @throws ValidationException
      */
-    private function assertSettingsComplete(): void {
-        $missing = $this->settings->missingForReceipts();
+    private function assertReady(): void {
+        $missing = $this->missingRequirements();
         if ($missing !== []) {
             throw new ValidationException('Bitte zuerst die Einstellungen vervollständigen: ' . implode(', ', $missing));
         }
+        // Fails early (before a number is drawn) if a main folder is not usable.
+        foreach (StorageService::VARIANTS as $variant) {
+            $this->storage->mainFolder($variant);
+        }
+    }
+
+    /**
+     * Runs $work in a transaction; on failure files created so far are
+     * removed again and the transaction is rolled back.
+     *
+     * @param callable(list<\OCP\Files\File>&): Receipt $work
+     */
+    private function inTransaction(callable $work): Receipt {
+        $created = [];
+        $this->db->beginTransaction();
+        try {
+            $receipt = $work($created);
+            $this->db->commit();
+            return $receipt;
+        } catch (\Throwable $e) {
+            foreach ($created as $file) {
+                try {
+                    $file->delete();
+                } catch (\Throwable) {
+                }
+            }
+            $this->db->rollBack();
+            throw $e;
+        }
+    }
+
+    /**
+     * Renders both versions, files them and stores their file IDs.
+     *
+     * @param list<\OCP\Files\File> $created
+     */
+    private function writeFiles(Receipt $receipt, Donor $donor, array &$created): Receipt {
+        $settings = $this->settings->getAll();
+        $signature = $this->images->tempPath(ImageStore::SIGNATURE);
+        $stamp = $this->images->tempPath(ImageStore::STAMP);
+        if ($signature === null || $stamp === null) {
+            throw new ValidationException('Unterschrift oder Stempel fehlt');
+        }
+
+        $unsigned = (new ReceiptPdf())->render($receipt, $donor, $settings);
+        $signed = (new ReceiptPdf())->render($receipt, $donor, $settings, $signature, $stamp);
+
+        $fileUnsigned = $this->storage->store(StorageService::UNSIGNED, $donor, $receipt, $unsigned, $created);
+        $fileSigned = $this->storage->store(StorageService::SIGNED, $donor, $receipt, $signed, $created);
+        $receipt->setFileUnsignedId($fileUnsigned->getId());
+        $receipt->setFileSignedId($fileSigned->getId());
+        return $this->receipts->update($receipt);
     }
 
     /**
