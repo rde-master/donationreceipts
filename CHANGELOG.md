@@ -4,6 +4,11 @@ Alle Änderungen der App, neueste zuerst. Versionen nach [SemVer](https://semver
 Fehlerbehebung erhöht die dritte Stelle, neue Funktionen die zweite, mit der Abnahme kommt 1.0.0.
 Jede Version hat einen Git-Tag `v<version>`.
 
+## 0.5.1 – 2026-10-27
+
+- ESLint 9 mit Vue-Regeln (`npm run lint`), läuft unter Node 20.
+- README: Funktionen, Einrichtung in der richtigen Reihenfolge, Abweichungen vom Plan.
+
 ## 0.5.0 – 2026-10-27
 
 Phase 5: E-Mail.
