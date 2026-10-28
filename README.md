@@ -28,7 +28,7 @@ Der vollständige Plan steht in [docs/plan.md](docs/plan.md), die Änderungen je
 
 ## Voraussetzungen
 
-- Nextcloud 32, PHP ≥ 8.1
+- Nextcloud 32 bis 35, PHP ≥ 8.1 (Nextcloud 35 selbst verlangt PHP ≥ 8.3)
 - SSH-Zugang zum Server (`occ`)
 - ausgehende SMTP-Verbindung zum Mailserver des Vereins (Port 587 oder 465)
 - Auf dem Server wird weder Node noch Composer gebraucht: das gebaute Frontend (`js/`)
@@ -97,7 +97,7 @@ Mit der Abnahme (Phase 6) kommt Version 1.0.0.
 ## Abweichungen vom Plan
 
 - **Fremdbibliotheken ohne Namespace-Präfix.** E-Mails laufen über das symfony/mailer, das
-  Nextcloud selbst mitbringt (NC 32: 6.4); gebündelt werden nur FPDF und FPDI. Damit ist
+  Nextcloud selbst mitbringt (NC 32: 6.4, NC 35: 7.4); gebündelt werden nur FPDF und FPDI. Damit ist
   kein Präfix-Werkzeug (php-scoper) nötig, und es gibt keinen Konflikt mit der
   Mailer-Version der Nextcloud.
 - **§ 60a AO** braucht laut Muster auch Finanzamt und Steuernummer, nicht nur das Datum.

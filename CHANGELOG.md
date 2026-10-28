@@ -4,6 +4,11 @@ Alle Änderungen der App, neueste zuerst. Versionen nach [SemVer](https://semver
 Fehlerbehebung erhöht die dritte Stelle, neue Funktionen die zweite, mit der Abnahme kommt 1.0.0.
 Jede Version hat einen Git-Tag `v<version>`.
 
+## 0.5.2 – 2026-10-28
+
+- Läuft unter Nextcloud 32 bis 35 (bisher nur 32). Geprüft gegen die OCP-API von NC 35 und
+  das dort mitgelieferte symfony/mailer 7.4; der STARTTLS-Zwang greift dort unverändert.
+
 ## 0.5.1 – 2026-10-27
 
 - ESLint 9 mit Vue-Regeln (`npm run lint`), läuft unter Node 20.

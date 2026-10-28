@@ -10,7 +10,7 @@ use Symfony\Component\Mailer\Transport\Smtp\Stream\SocketStream;
 
 /**
  * SMTP transport that never sends credentials or mail over an unencrypted
- * connection. Symfony 6.4 (shipped with Nextcloud) only uses STARTTLS when
+ * connection. Symfony Mailer (6.4 in NC 32, 7.4 in NC 35) only uses STARTTLS when
  * the server offers it; a stripped STARTTLS would otherwise silently fall
  * back to plain text.
  *

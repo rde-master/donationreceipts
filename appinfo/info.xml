@@ -5,7 +5,7 @@
     <name>Spendenbescheinigungen</name>
     <summary>Zuwendungsbestätigungen nach amtlichem Muster erstellen, ablegen und per E-Mail versenden.</summary>
     <description><![CDATA[Verwaltet Spender und erstellt für jeden beliebig viele Zuwendungsbestätigungen (Geld- und Sachzuwendung) nach den amtlichen Mustern 034122 und 034123 als PDF - jeweils ohne und mit eingefügter Unterschrift und Stempel. Die PDFs werden im Ordner des Spenders abgelegt und nach einer Vorschau über einen eigenen SMTP-Zugang verschickt.]]></description>
-    <version>0.5.1</version>
+    <version>0.5.2</version>
     <licence>agpl</licence>
     <author>rde-master</author>
     <namespace>DonationReceipts</namespace>
@@ -13,7 +13,7 @@
     <bugs>https://github.com/rde-master/donationreceipts/issues</bugs>
     <dependencies>
         <php min-version="8.1"/>
-        <nextcloud min-version="32" max-version="32"/>
+        <nextcloud min-version="32" max-version="35"/>
     </dependencies>
     <!--
     No static <navigations> entry: the top-nav link is registered in
