@@ -113,3 +113,8 @@ Mit der Abnahme (Phase 6) kommt Version 1.0.0.
   ohne Verschlüsselung wird abgelehnt.
 - **Zeichensatz im PDF**: Windows-1252 (alle deutschen Umlaute, ß und €). Zeichen außerhalb,
   z. B. in osteuropäischen Namen, werden angenähert (ł → l) oder als „?“ dargestellt.
+
+## Lizenz
+
+[GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0). Die mitgelieferten Bibliotheken
+unter `3rdparty/` (FPDF, FPDI) behalten ihre eigenen Lizenzen.
