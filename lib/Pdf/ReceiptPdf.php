@@ -47,6 +47,7 @@ class ReceiptPdf {
         $this->numberMark($receipt->getNumber());
         $this->block('issuer', [
             (string)$settings['org_name'],
+            (string)$settings['org_function'],
             (string)$settings['org_street'],
             trim($settings['org_zip'] . ' ' . $settings['org_city']),
         ]);

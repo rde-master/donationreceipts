@@ -22,6 +22,8 @@ class SettingsService {
     private const SCHEMA = [
         // Aussteller (Zuwendungsempfänger)
         'org_name' => ['type' => 'string', 'default' => ''],
+        // optionale Zeile unter dem Namen, z. B. Abteilung
+        'org_function' => ['type' => 'string', 'default' => ''],
         'org_street' => ['type' => 'string', 'default' => ''],
         'org_zip' => ['type' => 'string', 'default' => ''],
         'org_city' => ['type' => 'string', 'default' => ''],

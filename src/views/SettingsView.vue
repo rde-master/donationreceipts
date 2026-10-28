@@ -10,6 +10,7 @@
 			<section>
 				<h3>Verein (Zuwendungsempfänger)</h3>
 				<NcTextField v-model="values.org_name" label="Name" />
+				<NcTextField v-model="values.org_function" label="Funktionszeile (optional)" />
 				<NcTextField v-model="values.org_street" label="Straße und Hausnummer" />
 				<div class="dr-row">
 					<NcTextField v-model="values.org_zip" label="PLZ" class="dr-zip" />

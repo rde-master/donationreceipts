@@ -44,7 +44,7 @@ class ReceiptServiceTest extends TestCase {
         $this->settings = $this->createMock(SettingsService::class);
         $this->settings->method('missingForReceipts')->willReturn([]);
         $this->settings->method('getAll')->willReturn([
-            'org_name' => 'Verein', 'org_street' => 'Weg 1', 'org_zip' => '12345', 'org_city' => 'Ort',
+            'org_name' => 'Verein', 'org_function' => 'Abteilung Jugend', 'org_street' => 'Weg 1', 'org_zip' => '12345', 'org_city' => 'Ort',
             'tax_mode' => 'exemption', 'tax_office' => 'FA', 'tax_number' => '1/2/3',
             'exemption_date' => '2024-01-01', 'exemption_period' => '2023', 'statute_date' => '',
             'purposes' => 'Bildung', 'membership_fees_not_deductible' => false,

@@ -4,6 +4,12 @@ Alle Änderungen der App, neueste zuerst. Versionen nach [SemVer](https://semver
 Fehlerbehebung erhöht die dritte Stelle, neue Funktionen die zweite, mit der Abnahme kommt 1.0.0.
 Jede Version hat einen Git-Tag `v<version>`.
 
+## 0.6.0 – 2026-10-28
+
+- Einstellungen, Verein (Zuwendungsempfänger): neue optionale **Funktionszeile** unter dem
+  Namen (z. B. Abteilung). Sie steht im Aussteller-Feld beider Muster zwischen Name und
+  Anschrift; mit vier Zeilen wird die Schrift dort kleiner, damit alles ins Feld passt.
+
 ## 0.5.3 – 2026-10-28
 
 - Behoben: Die Knöpfe „Neuer Spender“, „Neue Bescheinigung“, „Bearbeiten“ und „Abbrechen“
