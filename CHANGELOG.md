@@ -4,6 +4,13 @@ Alle Änderungen der App, neueste zuerst. Versionen nach [SemVer](https://semver
 Fehlerbehebung erhöht die dritte Stelle, neue Funktionen die zweite, mit der Abnahme kommt 1.0.0.
 Jede Version hat einen Git-Tag `v<version>`.
 
+## 0.5.3 – 2026-10-28
+
+- Behoben: Die Knöpfe „Neuer Spender“, „Neue Bescheinigung“, „Bearbeiten“ und „Abbrechen“
+  taten beim Klicken nichts. Die App hatte vue-router 4, @nextcloud/vue 9.14 bringt
+  vue-router 5 mit; mit zwei Kopien fanden die Knöpfe den Router der App nicht. Die App
+  nutzt jetzt ebenfalls vue-router 5.
+
 ## 0.5.2 – 2026-10-28
 
 - Läuft unter Nextcloud 32 bis 35 (bisher nur 32). Geprüft gegen die OCP-API von NC 35 und
