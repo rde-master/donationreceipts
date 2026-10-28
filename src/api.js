@@ -13,6 +13,10 @@ export function errorMessage(error) {
 	return error?.response?.data?.error ?? error?.message ?? 'Unbekannter Fehler'
 }
 
+export async function getStats(year = null) {
+	return (await axios.get(base('/stats'), { params: year ? { year } : {} })).data
+}
+
 export async function getSettings() {
 	return (await axios.get(base('/settings'))).data
 }

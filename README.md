@@ -9,6 +9,11 @@ Der vollständige Plan steht in [docs/plan.md](docs/plan.md), die Änderungen je
 
 ## Funktionen
 
+- **Übersicht** (Startseite): Summe, Anzahl, Spender und Durchschnitt des gewählten Jahres
+  mit Vergleich zum Vorjahr (im laufenden Jahr bis zum gleichen Tag), Ausstellungen pro
+  Monat (Geld/Sach, Betrag oder Anzahl), Jahresvergleich, Versandstatus mit offenen
+  Bescheinigungen, größte Zuwendungen, Warnung vor Ablauf des Freistellungsbescheids.
+  Jedes Diagramm lässt sich auch als Tabelle anzeigen.
 - **Spender**: Person oder Firma, Anschrift, E-Mail, Notiz; Suche; Löschen nur ohne
   Bescheinigungen.
 - **Bescheinigungen**: Geld- oder Sachzuwendung, beliebig viele je Spender. Nummer

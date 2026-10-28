@@ -2,6 +2,11 @@
 	<NcContent app-name="donationreceipts">
 		<NcAppNavigation aria-label="Spendenbescheinigungen">
 			<template #list>
+				<NcAppNavigationItem name="Übersicht" :to="{ name: 'dashboard' }">
+					<template #icon>
+						<NcIconSvgWrapper :path="mdiViewDashboardOutline" />
+					</template>
+				</NcAppNavigationItem>
 				<NcAppNavigationItem name="Spender" :to="{ name: 'donors' }" :active="route.path.startsWith('/spender')">
 					<template #icon>
 						<NcIconSvgWrapper :path="mdiAccountGroupOutline" />
@@ -29,7 +34,7 @@
 </template>
 
 <script setup>
-import { mdiAccountGroupOutline, mdiCogOutline, mdiFileDocumentOutline } from '@mdi/js'
+import { mdiAccountGroupOutline, mdiCogOutline, mdiFileDocumentOutline, mdiViewDashboardOutline } from '@mdi/js'
 import NcAppContent from '@nextcloud/vue/components/NcAppContent'
 import NcAppNavigation from '@nextcloud/vue/components/NcAppNavigation'
 import NcAppNavigationItem from '@nextcloud/vue/components/NcAppNavigationItem'

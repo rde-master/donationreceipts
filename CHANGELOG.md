@@ -4,6 +4,22 @@ Alle Änderungen der App, neueste zuerst. Versionen nach [SemVer](https://semver
 Fehlerbehebung erhöht die dritte Stelle, neue Funktionen die zweite, mit der Abnahme kommt 1.0.0.
 Jede Version hat einen Git-Tag `v<version>`.
 
+## 0.7.0 – 2026-10-28
+
+- Neue Startseite **Übersicht** (Dashboard) für ein wählbares Jahr:
+  - Kennzahlen: Summe der Zuwendungen (davon Geld/Sach), Bescheinigungen, Spender (davon
+    zum ersten Mal), Durchschnitt, größte Einzelzuwendung – mit Veränderung zum Vorjahr; im
+    laufenden Jahr wird mit dem Vorjahr bis zum gleichen Tag verglichen.
+  - Diagramm „Ausgestellt pro Monat“, gestapelt nach Geld- und Sachzuwendung, umschaltbar
+    zwischen Betrag und Anzahl.
+  - Versandstatus (versendet, noch zu versenden, nach Versand geändert, Spender ohne E-Mail)
+    mit Liste der offenen Bescheinigungen zum direkten Öffnen.
+  - Größte Zuwendungen des Jahres je Spender.
+  - Jahresvergleich; ein Klick auf ein Jahr stellt die ganze Übersicht darauf um.
+  - Hinweise: fehlende Einstellungen und Gültigkeit des Freistellungs- bzw.
+    Feststellungsbescheids (§ 63 Abs. 5 AO) – Warnung ein halbes Jahr vor Ablauf.
+  - Diagramme mit Tooltip (auch per Tastatur) und Tabellenansicht; helles und dunkles Theme.
+
 ## 0.6.0 – 2026-10-28
 
 - Einstellungen, Verein (Zuwendungsempfänger): neue optionale **Funktionszeile** unter dem

@@ -126,3 +126,102 @@
 		flex: 1;
 	}
 }
+
+/*
+ * Chart colors (dashboard). Series 1/2 and the status steps are validated
+ * for color-vision deficiency against Nextcloud's light (#fff) and dark
+ * (#171717) background. Status colors always come with icon and label.
+ */
+.dr-viz {
+	--dr-series-1: #2a78d6;
+	--dr-series-2: #eb6834;
+	--dr-dim: #d6d5cf;
+	--dr-good: #0ca30c;
+	--dr-warning: #fab219;
+	--dr-serious: #ec835a;
+	--dr-critical: #d03b3b;
+	--dr-neutral: #a9a8a1;
+	--dr-grid: #e9e8e3;
+	--dr-axis: #c3c2b7;
+	--dr-delta-up: #006300;
+	--dr-delta-down: #b42828;
+}
+
+body[data-themes*="dark"] .dr-viz {
+	--dr-series-1: #3987e5;
+	--dr-series-2: #d95926;
+	--dr-dim: #45443f;
+	--dr-neutral: #6c6b66;
+	--dr-grid: #2c2c2a;
+	--dr-axis: #4a4a46;
+	--dr-delta-up: #0ca30c;
+	--dr-delta-down: #e66767;
+}
+
+@media (prefers-color-scheme: dark) {
+	body[data-themes*="default"] .dr-viz {
+		--dr-series-1: #3987e5;
+		--dr-series-2: #d95926;
+		--dr-dim: #45443f;
+		--dr-neutral: #6c6b66;
+		--dr-grid: #2c2c2a;
+		--dr-axis: #4a4a46;
+		--dr-delta-up: #0ca30c;
+		--dr-delta-down: #e66767;
+	}
+}
+
+.dr-legend {
+	display: flex;
+	flex-wrap: wrap;
+	gap: calc(var(--default-grid-baseline) * 1) calc(var(--default-grid-baseline) * 4);
+	font-size: 13px;
+}
+
+.dr-legend li {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.dr-legend__swatch {
+	width: 10px;
+	height: 10px;
+	border-radius: 2px;
+}
+
+.dr-tooltip {
+	position: absolute;
+	z-index: 10;
+	min-width: 150px;
+	padding: 8px 10px;
+	border-radius: var(--border-radius-large);
+	background: var(--color-main-background);
+	box-shadow: 0 2px 10px var(--color-box-shadow);
+	pointer-events: none;
+	font-size: 13px;
+}
+
+.dr-tooltip__title {
+	color: var(--color-text-maxcontrast);
+	margin-bottom: 4px;
+}
+
+.dr-tooltip__row {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	white-space: nowrap;
+}
+
+.dr-tooltip__key {
+	width: 12px;
+	height: 2px;
+	border-radius: 1px;
+}
+
+.dr-tooltip__total {
+	margin-top: 4px;
+	padding-top: 4px;
+	border-top: 1px solid var(--color-border);
+}

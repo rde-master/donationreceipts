@@ -1,4 +1,5 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
+import DashboardView from './views/DashboardView.vue'
 import DonorFormView from './views/DonorFormView.vue'
 import DonorsView from './views/DonorsView.vue'
 import DonorView from './views/DonorView.vue'
@@ -10,7 +11,8 @@ import SettingsView from './views/SettingsView.vue'
 export default createRouter({
 	history: createWebHashHistory(),
 	routes: [
-		{ path: '/', redirect: '/spender' },
+		{ path: '/', redirect: '/uebersicht' },
+		{ path: '/uebersicht', name: 'dashboard', component: DashboardView },
 		{ path: '/spender', name: 'donors', component: DonorsView },
 		{ path: '/spender/neu', name: 'donor-new', component: DonorFormView },
 		{ path: '/spender/:id(\\d+)', name: 'donor', component: DonorView, props: true },

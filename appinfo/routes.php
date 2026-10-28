@@ -6,6 +6,8 @@ return [
     'routes' => [
         ['name' => 'page#index', 'url' => '/', 'verb' => 'GET'],
 
+        ['name' => 'stats#index', 'url' => '/api/stats', 'verb' => 'GET'],
+
         ['name' => 'settings#get', 'url' => '/api/settings', 'verb' => 'GET'],
         ['name' => 'settings#update', 'url' => '/api/settings', 'verb' => 'PUT'],
         ['name' => 'settings#setFolder', 'url' => '/api/settings/folders/{variant}', 'verb' => 'PUT', 'requirements' => ['variant' => '(unsigned|signed)']],
