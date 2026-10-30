@@ -57,16 +57,35 @@ class SettingsService {
         'smtp_from_email' => ['type' => 'string', 'default' => ''],
         'mail_subject' => ['type' => 'string', 'default' => MailTemplate::DEFAULT_SUBJECT],
         'mail_body' => ['type' => 'string', 'default' => MailTemplate::DEFAULT_BODY],
+
+        // Sponsoren-Anschreiben über einen zweiten SMTP-Zugang (Passwort separat, verschlüsselt)
+        'sponsor_smtp_host' => ['type' => 'string', 'default' => ''],
+        'sponsor_smtp_port' => ['type' => 'int', 'default' => 587],
+        'sponsor_smtp_security' => ['type' => 'string', 'default' => self::SMTP_STARTTLS],
+        'sponsor_smtp_user' => ['type' => 'string', 'default' => ''],
+        'sponsor_smtp_from_name' => ['type' => 'string', 'default' => ''],
+        'sponsor_smtp_from_email' => ['type' => 'string', 'default' => ''],
+        // Rückmeldeformular: Text über dem Formular und Bestätigungsmail an den Sponsor
+        'response_intro' => ['type' => 'string', 'default' => SponsorTemplate::DEFAULT_INTRO],
+        'confirm_subject' => ['type' => 'string', 'default' => SponsorTemplate::DEFAULT_CONFIRM_SUBJECT],
+        'confirm_body' => ['type' => 'string', 'default' => SponsorTemplate::DEFAULT_CONFIRM_BODY],
+        // Ablage der hochgeladenen Logos (Nextcloud file ID, set via StorageService); 0 = no upload
+        'folder_logos_id' => ['type' => 'int', 'default' => 0],
     ];
 
     public const SMTP_STARTTLS = 'starttls';
     public const SMTP_SSL = 'ssl';
     private const SMTP_PASSWORD_KEY = 'smtp_password';
 
+    /** The two SMTP accounts, as prefix of their setting keys. */
+    public const ACCOUNT_RECEIPTS = '';
+    public const ACCOUNT_SPONSORS = 'sponsor_';
+    public const ACCOUNTS = [self::ACCOUNT_RECEIPTS, self::ACCOUNT_SPONSORS];
+
     private const DATE_KEYS = ['exemption_date', 'statute_date'];
 
     /** Only set through their own services (with access checks), never from the settings form. */
-    private const INTERNAL_KEYS = ['folder_unsigned_id', 'folder_signed_id'];
+    private const INTERNAL_KEYS = ['folder_unsigned_id', 'folder_signed_id', 'folder_logos_id'];
 
     public function __construct(
         private IAppConfig $appConfig,
@@ -74,30 +93,30 @@ class SettingsService {
     ) {
     }
 
-    public function setSmtpPassword(string $password): void {
-        $this->appConfig->setValueString(Application::APP_ID, self::SMTP_PASSWORD_KEY, $password === '' ? '' : $this->crypto->encrypt($password), sensitive: true);
+    public function setSmtpPassword(string $password, string $account = self::ACCOUNT_RECEIPTS): void {
+        $this->appConfig->setValueString(Application::APP_ID, $account . self::SMTP_PASSWORD_KEY, $password === '' ? '' : $this->crypto->encrypt($password), sensitive: true);
     }
 
-    public function getSmtpPassword(): string {
-        $stored = $this->appConfig->getValueString(Application::APP_ID, self::SMTP_PASSWORD_KEY, '');
+    public function getSmtpPassword(string $account = self::ACCOUNT_RECEIPTS): string {
+        $stored = $this->appConfig->getValueString(Application::APP_ID, $account . self::SMTP_PASSWORD_KEY, '');
         return $stored === '' ? '' : $this->crypto->decrypt($stored);
     }
 
-    public function hasSmtpPassword(): bool {
-        return $this->appConfig->getValueString(Application::APP_ID, self::SMTP_PASSWORD_KEY, '') !== '';
+    public function hasSmtpPassword(string $account = self::ACCOUNT_RECEIPTS): bool {
+        return $this->appConfig->getValueString(Application::APP_ID, $account . self::SMTP_PASSWORD_KEY, '') !== '';
     }
 
     /**
-     * Mail settings that are still missing for sending.
+     * Mail settings of an SMTP account that are still missing for sending.
      *
      * @return list<string>
      */
-    public function missingForMail(): array {
+    public function missingForMail(string $account = self::ACCOUNT_RECEIPTS): array {
         $missing = [];
-        if ($this->getString('smtp_host') === '') {
+        if ($this->getString($account . 'smtp_host') === '') {
             $missing[] = 'SMTP-Server';
         }
-        if ($this->getString('smtp_from_email') === '') {
+        if ($this->getString($account . 'smtp_from_email') === '') {
             $missing[] = 'Absenderadresse';
         }
         return $missing;
@@ -201,7 +220,7 @@ class SettingsService {
             if (!is_int($value)) {
                 throw new ValidationException('Ungültiger Wert für ' . $key);
             }
-            if ($key === 'smtp_port' && ($value < 1 || $value > 65535)) {
+            if (self::smtpKey($key) === 'smtp_port' && ($value < 1 || $value > 65535)) {
                 throw new ValidationException('Ungültiger SMTP-Port');
             }
             return $value;
@@ -213,15 +232,20 @@ class SettingsService {
         if ($key === 'tax_mode' && !in_array($value, [self::TAX_MODE_EXEMPTION, self::TAX_MODE_STATUTE], true)) {
             throw new ValidationException('Ungültige Art der Steuerbegünstigung');
         }
-        if ($key === 'smtp_security' && !in_array($value, [self::SMTP_STARTTLS, self::SMTP_SSL], true)) {
+        if (self::smtpKey($key) === 'smtp_security' && !in_array($value, [self::SMTP_STARTTLS, self::SMTP_SSL], true)) {
             throw new ValidationException('Ungültige Verschlüsselung');
         }
-        if ($key === 'smtp_from_email' && $value !== '' && filter_var($value, FILTER_VALIDATE_EMAIL) === false) {
+        if (self::smtpKey($key) === 'smtp_from_email' && $value !== '' && filter_var($value, FILTER_VALIDATE_EMAIL) === false) {
             throw new ValidationException('Die Absenderadresse ist ungültig');
         }
         if (in_array($key, self::DATE_KEYS, true) && $value !== '' && !GermanFormat::isIsoDate($value)) {
             throw new ValidationException('Ungültiges Datum für ' . $key);
         }
         return $value;
+    }
+
+    /** 'sponsor_smtp_port' -> 'smtp_port': both accounts share their validation. */
+    private static function smtpKey(string $key): string {
+        return str_starts_with($key, self::ACCOUNT_SPONSORS . 'smtp_') ? substr($key, strlen(self::ACCOUNT_SPONSORS)) : $key;
     }
 }

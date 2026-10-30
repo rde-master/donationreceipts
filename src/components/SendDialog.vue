@@ -16,6 +16,9 @@
 			<NcNoteCard v-if="mail.missing.length" type="error">
 				Für den Versand fehlt in den Einstellungen: {{ mail.missing.join(', ') }}
 			</NcNoteCard>
+			<NcNoteCard v-if="mail.error" type="error">
+				{{ mail.error }}
+			</NcNoteCard>
 			<NcTextField v-model="mail.to"
 				type="email"
 				label="Empfänger"
@@ -42,7 +45,7 @@
 			<NcButton type="submit"
 				form="dr-send-form"
 				variant="primary"
-				:disabled="!mail || sending || mail.missing.length > 0 || !mail.attachment">
+				:disabled="!mail || sending || mail.missing.length > 0 || !!mail.error || !mail.attachment">
 				<template #icon>
 					<NcLoadingIcon v-if="sending" :size="20" />
 					<NcIconSvgWrapper v-else :path="mdiSend" />
@@ -84,7 +87,7 @@ onMounted(async () => {
 		mail.value = await getMailPreview(props.receipt.id)
 	} catch (e) {
 		error.value = errorMessage(e)
-		mail.value = { to: '', subject: '', body: '', attachment: null, missing: [] }
+		mail.value = { to: '', subject: '', body: '', attachment: null, missing: [], error: null }
 	}
 })
 

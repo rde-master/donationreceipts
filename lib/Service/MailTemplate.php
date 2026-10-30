@@ -25,7 +25,11 @@ class MailTemplate {
         'datum' => 'Tag der Zuwendung',
         'art' => 'Geldzuwendung / Sachzuwendung',
         'verein' => 'Name des Vereins',
+        'ordnerlink' => 'Link zum Ordner mit allen unterschriebenen Bescheinigungen des Spenders (zum erneuten Herunterladen)',
     ];
+
+    /** Only replaced if used: creates a public link share on first use (see FolderShareService). */
+    public const FOLDER_LINK = 'ordnerlink';
 
     /**
      * @return array<string, string>

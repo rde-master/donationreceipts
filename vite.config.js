@@ -1,9 +1,11 @@
 import { createAppConfig } from '@nextcloud/vite-config'
 
 // Output: js/donationreceipts-<entry>.mjs (committed, so the server needs no Node).
+// "public" is the sponsor response form (no login).
 export default createAppConfig({
 	main: 'src/main.js',
 	admin: 'src/admin.js',
+	public: 'src/public.js',
 }, {
 	// Each entry injects the CSS of its own chunks (admin page has no main.mjs).
 	inlineCSS: { relativeCSSInjection: true },

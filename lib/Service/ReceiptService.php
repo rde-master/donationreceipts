@@ -108,6 +108,18 @@ class ReceiptService {
     }
 
     /**
+     * Checks settings, folders and $data as create() would, without
+     * creating anything.
+     *
+     * @param array<string, mixed> $data
+     * @throws ValidationException
+     */
+    public function validate(array $data): void {
+        $this->assertReady();
+        $this->apply(new Receipt(), $data);
+    }
+
+    /**
      * Everything that is still missing before receipts can be created.
      *
      * @return list<string>

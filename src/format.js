@@ -65,3 +65,11 @@ export const ORIGINS = {
 	private: 'Privatvermögen',
 	unknown: 'keine Angaben zur Herkunft',
 }
+
+/**
+ * @return {string} today as "2026-03-01" (local time)
+ */
+export function todayIso() {
+	const now = new Date()
+	return [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('-')
+}

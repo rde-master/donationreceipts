@@ -27,6 +27,9 @@ class StorageService {
     public const UNSIGNED = 'unsigned';
     public const SIGNED = 'signed';
     public const VARIANTS = [self::UNSIGNED, self::SIGNED];
+    /** Folder for logos uploaded with sponsor responses (optional). */
+    public const LOGOS = 'logos';
+    public const FOLDERS = [self::UNSIGNED, self::SIGNED, self::LOGOS];
 
     public function __construct(
         private IRootFolder $rootFolder,
@@ -42,12 +45,23 @@ class StorageService {
      * @throws ValidationException
      */
     public function mainFolder(string $variant): Folder {
+        return $this->configuredFolder($variant, $this->userFolder());
+    }
+
+    /**
+     * @throws ValidationException
+     */
+    private function configuredFolder(string $variant, Folder $userFolder): Folder {
         $id = (int)$this->settings->get($this->settingKey($variant));
-        $label = $variant === self::SIGNED ? 'unterschrieben' : 'nicht unterschrieben';
+        $label = match ($variant) {
+            self::SIGNED => 'unterschrieben',
+            self::LOGOS => 'Logos',
+            default => 'nicht unterschrieben',
+        };
         if ($id === 0) {
             throw new ValidationException("Der Hauptordner „{$label}“ ist in den Einstellungen nicht gewählt");
         }
-        $node = $this->userFolder()->getFirstNodeById($id);
+        $node = $userFolder->getFirstNodeById($id);
         if (!$node instanceof Folder) {
             throw new ValidationException("Der Hauptordner „{$label}“ wurde nicht gefunden oder ist für dich nicht zugänglich");
         }
@@ -82,7 +96,7 @@ class StorageService {
      */
     public function mainFolderPaths(): array {
         $paths = [];
-        foreach (self::VARIANTS as $variant) {
+        foreach (self::FOLDERS as $variant) {
             $id = (int)$this->settings->get($this->settingKey($variant));
             $node = $id !== 0 ? $this->userFolder()->getFirstNodeById($id) : null;
             $paths[$variant] = $node instanceof Folder ? $this->relativePath($node) : '';
@@ -169,6 +183,43 @@ class StorageService {
         return $folder;
     }
 
+    /**
+     * Stores a sponsor's logo as <Logo-Ordner>/<Aktion>/<Sponsor>.<ext>.
+     * Runs without a logged-in user (public response form), so the files of
+     * $uid - the user who sent the letter - are used. A logo uploaded again
+     * replaces the earlier file (kept in the version history).
+     *
+     * @throws ValidationException logo folder not set or not writable for $uid
+     */
+    public function storeLogo(string $uid, ?int $existingId, string $campaignName, string $sponsorName, string $extension, string $content): File {
+        $userFolder = $this->rootFolder->getUserFolder($uid);
+        $fileName = self::folderName($sponsorName) . '.' . $extension;
+
+        if ($existingId !== null) {
+            $existing = $userFolder->getFirstNodeById($existingId);
+            if ($existing instanceof File) {
+                $parent = $existing->getParent();
+                if ($existing->getName() !== $fileName && !$parent->nodeExists($fileName)) {
+                    $existing = $existing->move($parent->getPath() . '/' . $fileName);
+                }
+                $existing->putContent($content);
+                return $existing;
+            }
+        }
+
+        $main = $this->configuredFolder(self::LOGOS, $userFolder);
+        $folderName = self::folderName($campaignName);
+        $folder = $main->nodeExists($folderName) ? $main->get($folderName) : $main->newFolder($folderName);
+        if (!$folder instanceof Folder) {
+            throw new ValidationException("„{$folderName}“ im Logo-Ordner ist kein Ordner");
+        }
+        $base = self::folderName($sponsorName);
+        for ($i = 1; $folder->nodeExists($fileName); $i++) {
+            $fileName = "{$base} ({$i}).{$extension}";
+        }
+        return $folder->newFile($fileName, $content);
+    }
+
     public function getFile(?int $fileId): ?File {
         if ($fileId === null) {
             return null;
@@ -196,7 +247,11 @@ class StorageService {
     }
 
     private function settingKey(string $variant): string {
-        return $variant === self::SIGNED ? 'folder_signed_id' : 'folder_unsigned_id';
+        return match ($variant) {
+            self::SIGNED => 'folder_signed_id',
+            self::LOGOS => 'folder_logos_id',
+            default => 'folder_unsigned_id',
+        };
     }
 
     private function relativePath(Folder $folder): string {

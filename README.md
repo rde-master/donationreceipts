@@ -27,9 +27,31 @@ Der vollständige Plan steht in [docs/plan.md](docs/plan.md), die Änderungen je
   „nicht unterschrieben“ und „unterschrieben“. Ordner und Dateien sind über ihre Datei-ID
   zugeordnet; bei Änderungen bleibt die alte Fassung in der Versionshistorie.
 - **E-Mail**: Versand der unterschriebenen Fassung über einen eigenen SMTP-Zugang nach einer
-  Vorschau; Vorlage mit Platzhaltern; Versandzeitpunkt und Empfänger werden gespeichert.
+  Vorschau; Vorlage mit Platzhaltern; Versandzeitpunkt und Empfänger werden gespeichert. Mit
+  `{ordnerlink}` enthält die Mail einen öffentlichen Link (nur lesen) auf den Ordner
+  „unterschrieben“ des Spenders, über den er alle seine Bescheinigungen jederzeit wieder
+  herunterladen kann. Der Link wird beim ersten Gebrauch als Nextcloud-Freigabe angelegt und
+  danach wiederverwendet; die Fassungen ohne Unterschrift werden nie freigegeben.
+- **Sponsoren anschreiben**:
+  - **Sponsoren**: eigene Liste mit Name, Ansprechpartner, Briefanrede und E-Mail; bestehende
+    Spender lassen sich übernehmen und bleiben mit ihnen verknüpft.
+  - **Vorlagen**: beliebig viele Anschreiben-Vorlagen mit Platzhaltern (`{anrede}`, `{name}`,
+    `{ansprechpartner}`, `{aktion}`, `{link}`, `{verein}`).
+  - **Aktionen** (z. B. „Sommerfest 2027“): Sponsoren auswählen, Vorlage wählen, Vorschau, dann
+    einzeln oder als Serie versenden – über einen **eigenen SMTP-Zugang**, getrennt vom Zugang
+    für Bescheinigungen. Jeder Sponsor bekommt einen persönlichen Rückmelde-Link.
+  - **Rückmeldeformular** (öffentlich, ohne Login): frei konfigurierbarer Text mit Platzhaltern,
+    Anschrift für die Bescheinigung, Geld- oder Sachspende, Freikarten (2 / 1 / nein / melde mich
+    noch), Zustimmung zur öffentlichen Nennung (Logo auf Plakaten) mit optionalem Logo-Upload und
+    ein Hinweisfeld. Änderbar über denselben Link, bis die Spende eingegangen ist.
+  - Nach einer Rückmeldung: Benachrichtigung an alle Gruppenmitglieder und Bestätigungsmail an
+    den Sponsor (eigene Vorlage, `{angaben}` fasst die Rückmeldung zusammen).
+  - **Spende eingegangen**: In der Aktion oder unter „Bescheinigungen“ bestätigt ein
+    Gruppenmitglied Eingangsdatum und Betrag. Dann wird der Spender angelegt bzw. aktualisiert,
+    die Bescheinigung mit Nummer und PDFs erzeugt und sofort per E-Mail versendet.
 - **Rechte**: Nur Mitglieder einer vom Admin gewählten Gruppe sehen und nutzen die App; jeder
-  API-Aufruf wird serverseitig geprüft.
+  API-Aufruf wird serverseitig geprüft. Einzige Ausnahme ist das Rückmeldeformular: Es ist nur
+  über den 32-stelligen Link erreichbar; falsche Links werden gebremst (Brute-Force-Schutz).
 
 ## Voraussetzungen
 
@@ -60,6 +82,9 @@ php occ app:enable donationreceipts
    - die beiden Hauptordner (alle Gruppenmitglieder brauchen dort Schreibrecht, z. B. über
      einen Team-Ordner der Gruppe)
    - SMTP-Zugang und E-Mail-Vorlage, dann „Testmail senden“
+   - für Sponsoren-Anschreiben: zweiter SMTP-Zugang, Text des Rückmeldeformulars,
+     Bestätigungsmail und optional ein Logo-Ordner (Logos landen in den Dateien des Mitglieds,
+     das das Anschreiben verschickt hat; es braucht dort Schreibrecht)
 
 Solange etwas fehlt, zeigt die Einstellungsseite oben eine Liste, und das Erstellen von
 Bescheinigungen wird abgelehnt.

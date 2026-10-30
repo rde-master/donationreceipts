@@ -74,4 +74,29 @@ class SettingsServiceTest extends TestCase {
         $this->assertContains('Datum des Feststellungsbescheids', $missing);
         $this->assertNotContains('Veranlagungszeitraum', $missing);
     }
+
+    public function testSponsorAccountIsValidatedLikeReceiptAccount(): void {
+        $this->service->update(['sponsor_smtp_port' => 465, 'sponsor_smtp_security' => 'ssl']);
+        $this->assertSame(465, $this->service->get('sponsor_smtp_port'));
+        $this->expectException(ValidationException::class);
+        $this->service->update(['sponsor_smtp_port' => 70000]);
+    }
+
+    public function testSponsorSenderAddressIsValidated(): void {
+        $this->expectException(ValidationException::class);
+        $this->service->update(['sponsor_smtp_from_email' => 'keine-adresse']);
+    }
+
+    public function testMissingForMailPerAccount(): void {
+        $this->service->update(['smtp_host' => 'smtp.example.org', 'smtp_from_email' => 'kasse@example.org']);
+        $this->assertSame([], $this->service->missingForMail());
+        $this->assertSame(['SMTP-Server', 'Absenderadresse'], $this->service->missingForMail(SettingsService::ACCOUNT_SPONSORS));
+    }
+
+    public function testLogoFolderIsInternal(): void {
+        $this->service->update(['folder_logos_id' => 5]);
+        $this->assertSame(0, $this->service->get('folder_logos_id'));
+        $this->service->update(['folder_logos_id' => 5], true);
+        $this->assertSame(5, $this->service->get('folder_logos_id'));
+    }
 }

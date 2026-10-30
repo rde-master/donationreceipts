@@ -4,22 +4,17 @@ declare(strict_types=1);
 
 namespace OCA\DonationReceipts\Service;
 
+use OCA\DonationReceipts\Db\Donor;
 use OCA\DonationReceipts\Db\DonorMapper;
 use OCA\DonationReceipts\Db\Receipt;
 use OCA\DonationReceipts\Db\ReceiptMapper;
 use OCA\DonationReceipts\Exception\ValidationException;
-use OCA\DonationReceipts\Mail\StrictEsmtpTransport;
+use OCA\DonationReceipts\Mail\SmtpSender;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\Mail\IMailer;
-use Psr\Log\LoggerInterface;
-use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
-use Symfony\Component\Mime\Address;
-use Symfony\Component\Mime\Email;
 
 /**
- * Sends the signed receipt through the app's own SMTP account - independent
- * of the mail server configured in Nextcloud. Uses the symfony/mailer that
- * Nextcloud ships.
+ * Sends the signed receipt through the app's own SMTP account for receipts.
  */
 class MailService {
     public function __construct(
@@ -29,25 +24,33 @@ class MailService {
         private ReceiptMapper $receipts,
         private IMailer $mailer,
         private ITimeFactory $time,
-        private LoggerInterface $logger,
+        private SmtpSender $sender,
+        private FolderShareService $folderShares,
     ) {
     }
 
     /**
      * What would be sent: recipient, subject and text from the template.
      *
-     * @return array{to: string, subject: string, body: string, attachment: string|null, missing: list<string>}
+     * @return array{to: string, subject: string, body: string, attachment: string|null, missing: list<string>, error: string|null}
      */
     public function preview(Receipt $receipt): array {
         $donor = $this->donors->find($receipt->getDonorId());
-        $values = MailTemplate::values($receipt, $donor, $this->settings->getString('org_name'));
         $file = $this->storage->getFile($receipt->getFileSignedId());
+        $error = null;
+        try {
+            $mail = $this->render($receipt, $donor);
+        } catch (ValidationException $e) {
+            // e.g. the folder link could not be created; the text shows the placeholder
+            $error = $e->getMessage();
+            $mail = $this->render($receipt, $donor, false);
+        }
         return [
             'to' => (string)$donor->getEmail(),
-            'subject' => MailTemplate::render($this->settings->getString('mail_subject'), $values),
-            'body' => MailTemplate::render($this->settings->getString('mail_body'), $values),
+        ] + $mail + [
             'attachment' => $file?->getName(),
             'missing' => $this->settings->missingForMail(),
+            'error' => $error,
         ];
     }
 
@@ -69,9 +72,9 @@ class MailService {
             throw new ValidationException('Die unterschriebene Fassung fehlt im Spenderordner. Speichere die Bescheinigung erneut.');
         }
 
-        $email = $this->newEmail($to, $subject, $body)
+        $email = $this->sender->newEmail(SettingsService::ACCOUNT_RECEIPTS, $to, $subject, $body)
             ->attach($file->getContent(), $file->getName(), 'application/pdf');
-        $this->deliver($email);
+        $this->sender->send(SettingsService::ACCOUNT_RECEIPTS, $email);
 
         $receipt->setSentAt($this->time->getTime());
         $receipt->setSentTo($to);
@@ -80,55 +83,35 @@ class MailService {
     }
 
     /**
+     * Subject and text of the receipt mail from the settings' template.
+     * {ordnerlink} is only resolved if the template uses it.
+     *
+     * @return array{subject: string, body: string}
+     * @throws ValidationException the folder link could not be created
+     */
+    public function render(Receipt $receipt, Donor $donor, bool $withFolderLink = true): array {
+        $subject = $this->settings->getString('mail_subject');
+        $body = $this->settings->getString('mail_body');
+        $values = MailTemplate::values($receipt, $donor, $this->settings->getString('org_name'));
+        $placeholder = '{' . MailTemplate::FOLDER_LINK . '}';
+        if ($withFolderLink && (str_contains($subject, $placeholder) || str_contains($body, $placeholder))) {
+            $values[MailTemplate::FOLDER_LINK] = $this->folderShares->link($donor);
+        }
+        return [
+            'subject' => MailTemplate::render($subject, $values),
+            'body' => MailTemplate::render($body, $values),
+        ];
+    }
+
+    /**
      * @throws ValidationException
      */
-    public function sendTest(string $to): void {
+    public function sendTest(string $to, string $account = SettingsService::ACCOUNT_RECEIPTS): void {
         if (!$this->mailer->validateMailAddress(trim($to))) {
             throw new ValidationException('Die Empfängeradresse ist ungültig');
         }
-        $this->deliver($this->newEmail(trim($to), 'Testmail Spendenbescheinigungen',
-            "Diese Testmail bestätigt, dass der SMTP-Zugang der App Spendenbescheinigungen funktioniert."));
-    }
-
-    /**
-     * @throws ValidationException
-     */
-    private function newEmail(string $to, string $subject, string $body): Email {
-        $missing = $this->settings->missingForMail();
-        if ($missing !== []) {
-            throw new ValidationException('Bitte zuerst die E-Mail-Einstellungen vervollständigen: ' . implode(', ', $missing));
-        }
-        return (new Email())
-            ->from(new Address($this->settings->getString('smtp_from_email'), $this->settings->getString('smtp_from_name')))
-            ->to($to)
-            ->subject(trim($subject))
-            ->text($body);
-    }
-
-    /**
-     * @throws ValidationException
-     */
-    private function deliver(Email $email): void {
-        $transport = new StrictEsmtpTransport(
-            $this->settings->getString('smtp_host'),
-            (int)$this->settings->get('smtp_port'),
-            $this->settings->get('smtp_security') === SettingsService::SMTP_SSL,
-        );
-        $user = $this->settings->getString('smtp_user');
-        if ($user !== '') {
-            $transport->setUsername($user);
-            $transport->setPassword($this->settings->getSmtpPassword());
-        }
-        try {
-            $transport->send($email);
-        } catch (TransportExceptionInterface $e) {
-            $this->logger->warning('Sending donation receipt mail failed', ['exception' => $e]);
-            throw new ValidationException('Versand fehlgeschlagen: ' . $e->getMessage());
-        } finally {
-            try {
-                $transport->stop();
-            } catch (\Throwable) {
-            }
-        }
+        $label = $account === SettingsService::ACCOUNT_SPONSORS ? 'für Sponsoren-Anschreiben' : 'für Bescheinigungen';
+        $this->sender->send($account, $this->sender->newEmail($account, trim($to), 'Testmail Spendenbescheinigungen',
+            "Diese Testmail bestätigt, dass der SMTP-Zugang {$label} der App Spendenbescheinigungen funktioniert."));
     }
 }

@@ -9,6 +9,7 @@ use OCA\DonationReceipts\Service\ImageStore;
 use OCA\DonationReceipts\Service\MailTemplate;
 use OCA\DonationReceipts\Service\ReceiptService;
 use OCA\DonationReceipts\Service\SettingsService;
+use OCA\DonationReceipts\Service\SponsorTemplate;
 use OCA\DonationReceipts\Service\StorageService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
@@ -39,12 +40,17 @@ class SettingsController extends Controller {
     #[NoAdminRequired]
     public function update(array $values): JSONResponse {
         try {
-            // Empty means "unchanged"; the stored password is never sent to the browser.
-            $password = $values['smtp_password'] ?? '';
-            unset($values['smtp_password']);
+            // Empty means "unchanged"; the stored passwords are never sent to the browser.
+            $passwords = [];
+            foreach (SettingsService::ACCOUNTS as $account) {
+                $passwords[$account] = $values[$account . 'smtp_password'] ?? '';
+                unset($values[$account . 'smtp_password']);
+            }
             $this->settings->update($values);
-            if (is_string($password) && $password !== '') {
-                $this->settings->setSmtpPassword($password);
+            foreach ($passwords as $account => $password) {
+                if (is_string($password) && $password !== '') {
+                    $this->settings->setSmtpPassword($password, $account);
+                }
             }
         } catch (ValidationException $e) {
             return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
@@ -75,6 +81,10 @@ class SettingsController extends Controller {
             'smtpPasswordSet' => $this->settings->hasSmtpPassword(),
             'mailMissing' => $this->settings->missingForMail(),
             'placeholders' => MailTemplate::PLACEHOLDERS,
+            'sponsorSmtpPasswordSet' => $this->settings->hasSmtpPassword(SettingsService::ACCOUNT_SPONSORS),
+            'sponsorMailMissing' => $this->settings->missingForMail(SettingsService::ACCOUNT_SPONSORS),
+            'sponsorPlaceholders' => SponsorTemplate::PLACEHOLDERS,
+            'confirmPlaceholders' => SponsorTemplate::CONFIRM_PLACEHOLDERS,
         ];
     }
 }

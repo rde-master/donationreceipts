@@ -1,4 +1,6 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
+import CampaignsView from './views/CampaignsView.vue'
+import CampaignView from './views/CampaignView.vue'
 import DashboardView from './views/DashboardView.vue'
 import DonorFormView from './views/DonorFormView.vue'
 import DonorsView from './views/DonorsView.vue'
@@ -7,6 +9,9 @@ import ReceiptFormView from './views/ReceiptFormView.vue'
 import ReceiptsView from './views/ReceiptsView.vue'
 import ReceiptView from './views/ReceiptView.vue'
 import SettingsView from './views/SettingsView.vue'
+import SponsorFormView from './views/SponsorFormView.vue'
+import SponsorsView from './views/SponsorsView.vue'
+import TemplatesView from './views/TemplatesView.vue'
 
 export default createRouter({
 	history: createWebHashHistory(),
@@ -21,6 +26,12 @@ export default createRouter({
 		{ path: '/bescheinigungen', name: 'receipts', component: ReceiptsView },
 		{ path: '/bescheinigungen/:id(\\d+)', name: 'receipt', component: ReceiptView, props: true },
 		{ path: '/bescheinigungen/:id(\\d+)/bearbeiten', name: 'receipt-edit', component: ReceiptFormView, props: true },
+		{ path: '/sponsoren', name: 'sponsors', component: SponsorsView },
+		{ path: '/sponsoren/neu', name: 'sponsor-new', component: SponsorFormView },
+		{ path: '/sponsoren/:id(\\d+)', name: 'sponsor-edit', component: SponsorFormView, props: true },
+		{ path: '/aktionen', name: 'campaigns', component: CampaignsView },
+		{ path: '/aktionen/:id(\\d+)', name: 'campaign', component: CampaignView, props: true },
+		{ path: '/vorlagen', name: 'templates', component: TemplatesView },
 		{ path: '/einstellungen', name: 'settings', component: SettingsView },
 	],
 })

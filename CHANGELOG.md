@@ -4,6 +4,33 @@ Alle Änderungen der App, neueste zuerst. Versionen nach [SemVer](https://semver
 Fehlerbehebung erhöht die dritte Stelle, neue Funktionen die zweite, mit der Abnahme kommt 1.0.0.
 Jede Version hat einen Git-Tag `v<version>`.
 
+## 0.8.0 – 2026-10-30
+
+- Neu: **Sponsoren anschreiben** (Navigation „Aktionen“, „Sponsoren“, „Vorlagen“).
+  - Sponsorenliste mit Name, Ansprechpartner, Briefanrede, E-Mail und Notiz; bestehende
+    Spender mit E-Mail-Adresse lassen sich übernehmen.
+  - Anschreiben-Vorlagen mit Platzhaltern, in der App verwaltbar.
+  - Aktionen mit Übersicht (angeschrieben, Rückmeldungen, zugesagte und noch offene Beträge,
+    Freikarten, Logo-Freigaben) und Filter nach Status. Versand einzeln oder als Serie nach
+    Vorschau, jeder Sponsor mit persönlichem Rückmelde-Link (auch zum Kopieren).
+  - Öffentliches Rückmeldeformular: konfigurierbarer Text, Anschrift, Geld- oder Sachspende,
+    Freikarten, Zustimmung „Logo auf Plakaten“ mit optionalem Logo-Upload, Hinweis. Änderbar,
+    bis die Spende eingegangen ist; geschlossene Aktionen nehmen nichts mehr an.
+  - Nach jeder Rückmeldung eine Nextcloud-Benachrichtigung an die Gruppe und eine
+    Bestätigungsmail an den Sponsor.
+  - „Spende eingegangen“ erzeugt Spender, Bescheinigung und PDFs und versendet sie sofort;
+    schlägt nur der Versand fehl, bleibt die Bescheinigung erhalten und der Fehler wird
+    angezeigt. Offene Zusagen stehen auch oben unter „Bescheinigungen“.
+- Einstellungen: zweiter SMTP-Zugang für Sponsoren-Anschreiben (mit Testmail), Text des
+  Rückmeldeformulars, Bestätigungsmail, optionaler Logo-Ordner.
+- Neu in der Bescheinigungs-Mail: Platzhalter **`{ordnerlink}`** – öffentlicher Link (nur lesen)
+  auf den Ordner „unterschrieben“ des Spenders, damit er seine Bescheinigungen jederzeit wieder
+  herunterladen kann. Ein Link je Spender, beim ersten Versand angelegt und danach
+  wiederverwendet; ist er gelöscht oder abgelaufen, entsteht ein neuer. Verlangt die Nextcloud
+  für öffentliche Links ein Passwort, meldet die Vorschau das, statt ohne Link zu senden.
+- Neue Datenbanktabellen (`occ upgrade` nötig): `dr_sponsors`, `dr_campaigns`,
+  `dr_letter_templates`, `dr_inquiries`; neue Spalte `dr_donors.share_token`.
+
 ## 0.7.0 – 2026-10-28
 
 - Neue Startseite **Übersicht** (Dashboard) für ein wählbares Jahr:

@@ -30,6 +30,8 @@ use OCP\AppFramework\Db\Entity;
  * @method void setFolderUnsignedId(?int $id)
  * @method int|null getFolderSignedId()
  * @method void setFolderSignedId(?int $id)
+ * @method string|null getShareToken()
+ * @method void setShareToken(?string $token)
  * @method string|null getNotes()
  * @method void setNotes(?string $notes)
  * @method string getCreatedBy()
@@ -55,6 +57,7 @@ class Donor extends Entity implements JsonSerializable {
     protected $email;
     protected $folderUnsignedId;
     protected $folderSignedId;
+    protected $shareToken;
     protected $notes;
     protected $createdBy;
     protected $createdAt;

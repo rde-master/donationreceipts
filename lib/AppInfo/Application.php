@@ -6,6 +6,7 @@ namespace OCA\DonationReceipts\AppInfo;
 
 use OCA\DonationReceipts\Listener\LoadNavigationEntryListener;
 use OCA\DonationReceipts\Middleware\AccessMiddleware;
+use OCA\DonationReceipts\Notification\Notifier;
 use OCP\AppFramework\App;
 use OCP\AppFramework\Bootstrap\IBootContext;
 use OCP\AppFramework\Bootstrap\IBootstrap;
@@ -24,6 +25,8 @@ class Application extends App implements IBootstrap {
         $context->registerMiddleware(AccessMiddleware::class);
         // Top-nav entry only for members of the allowed group.
         $context->registerEventListener(LoadAdditionalEntriesEvent::class, LoadNavigationEntryListener::class);
+        // "Sponsor hat geantwortet" for the group.
+        $context->registerNotifierService(Notifier::class);
     }
 
     public function boot(IBootContext $context): void {

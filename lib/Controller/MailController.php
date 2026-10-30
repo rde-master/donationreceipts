@@ -7,6 +7,7 @@ namespace OCA\DonationReceipts\Controller;
 use OCA\DonationReceipts\Exception\ValidationException;
 use OCA\DonationReceipts\Service\MailService;
 use OCA\DonationReceipts\Service\ReceiptService;
+use OCA\DonationReceipts\Service\SettingsService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Http;
@@ -48,9 +49,12 @@ class MailController extends Controller {
 
     #[NoAdminRequired]
     #[UserRateLimit(limit: 10, period: 600)]
-    public function test(string $to): JSONResponse {
+    public function test(string $to, string $account = SettingsService::ACCOUNT_RECEIPTS): JSONResponse {
+        if (!in_array($account, SettingsService::ACCOUNTS, true)) {
+            return new JSONResponse(['error' => 'Unbekannter SMTP-Zugang'], Http::STATUS_BAD_REQUEST);
+        }
         try {
-            $this->mail->sendTest($to);
+            $this->mail->sendTest($to, $account);
             return new JSONResponse(['sent' => true]);
         } catch (ValidationException $e) {
             return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);

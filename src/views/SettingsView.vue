@@ -114,7 +114,7 @@
 				</div>
 				<div class="dr-row">
 					<NcTextField v-model="testAddress" type="email" label="Testmail an" />
-					<NcButton :disabled="testing || !testAddress" @click="sendTest">
+					<NcButton :disabled="testing || !testAddress" @click="sendTest('')">
 						Speichern und Testmail senden
 					</NcButton>
 				</div>
@@ -130,6 +130,89 @@
 				<p class="dr-muted">
 					Platzhalter:
 					<span v-for="(label, key) in placeholders" :key="key" class="dr-placeholder">
+						<code>{{ '{' + key + '}' }}</code> {{ label }}
+					</span>
+				</p>
+			</section>
+
+			<section>
+				<h3>Sponsoren-Anschreiben: E-Mail-Versand (SMTP)</h3>
+				<p class="dr-muted">
+					Zweiter Zugang für Anschreiben an Sponsoren und die Bestätigung nach einer Rückmeldung –
+					z. B. ein anderes Postfach als für die Bescheinigungen.
+				</p>
+				<NcNoteCard v-if="sponsorMailMissing.length" type="info">
+					Noch nicht eingerichtet: {{ sponsorMailMissing.join(', ') }}
+				</NcNoteCard>
+				<div class="dr-row">
+					<NcTextField v-model="values.sponsor_smtp_host" label="Server" placeholder="smtp.example.org" />
+					<NcTextField v-model="sponsorSmtpPort"
+						type="number"
+						label="Port"
+						class="dr-zip" />
+				</div>
+				<div class="dr-row dr-radios">
+					<NcCheckboxRadioSwitch v-model="values.sponsor_smtp_security"
+						type="radio"
+						value="starttls"
+						name="sponsor_smtp_security"
+						@update:model-value="values.sponsor_smtp_port = 587">
+						STARTTLS (Port 587)
+					</NcCheckboxRadioSwitch>
+					<NcCheckboxRadioSwitch v-model="values.sponsor_smtp_security"
+						type="radio"
+						value="ssl"
+						name="sponsor_smtp_security"
+						@update:model-value="values.sponsor_smtp_port = 465">
+						SSL/TLS (Port 465)
+					</NcCheckboxRadioSwitch>
+				</div>
+				<div class="dr-row">
+					<NcTextField v-model="values.sponsor_smtp_user" label="Benutzer" autocomplete="off" />
+					<NcPasswordField v-model="sponsorSmtpPassword"
+						label="Passwort"
+						autocomplete="new-password"
+						:placeholder="sponsorSmtpPasswordSet ? 'gespeichert – leer lassen zum Behalten' : ''" />
+				</div>
+				<div class="dr-row">
+					<NcTextField v-model="values.sponsor_smtp_from_name" label="Absendername" />
+					<NcTextField v-model="values.sponsor_smtp_from_email" type="email" label="Absenderadresse" />
+				</div>
+				<div class="dr-row">
+					<NcTextField v-model="sponsorTestAddress" type="email" label="Testmail an" />
+					<NcButton :disabled="testing || !sponsorTestAddress" @click="sendTest('sponsor_')">
+						Speichern und Testmail senden
+					</NcButton>
+				</div>
+			</section>
+
+			<section>
+				<h3>Rückmeldeformular</h3>
+				<NcTextArea v-model="values.response_intro"
+					label="Text über dem Formular"
+					resize="vertical"
+					rows="6" />
+				<p class="dr-muted">
+					Platzhalter:
+					<span v-for="(label, key) in sponsorPlaceholders" :key="key" class="dr-placeholder">
+						<code>{{ '{' + key + '}' }}</code> {{ label }}
+					</span>
+				</p>
+			</section>
+
+			<section>
+				<h3>Bestätigung an den Sponsor</h3>
+				<p class="dr-muted">
+					Geht nach jeder Rückmeldung (auch nach Änderungen) an die E-Mail-Adresse des Sponsors.
+				</p>
+				<NcTextField v-model="values.confirm_subject" label="Betreff" />
+				<NcTextArea v-model="values.confirm_body"
+					label="Text"
+					resize="vertical"
+					rows="10" />
+				<p class="dr-muted">
+					Platzhalter:
+					<span v-for="(label, key) in confirmPlaceholders" :key="key" class="dr-placeholder">
 						<code>{{ '{' + key + '}' }}</code> {{ label }}
 					</span>
 				</p>
@@ -161,7 +244,8 @@
 				<h3>Ablage</h3>
 				<p class="dr-muted">
 					In beiden Hauptordnern legt die App je Spender einen Unterordner an. Alle Berechtigten
-					brauchen dort Schreibrecht, z. B. über einen Team-Ordner.
+					brauchen dort Schreibrecht, z. B. über einen Team-Ordner. Im Logo-Ordner landen die
+					Logos aus Rückmeldungen je Aktion; ohne Logo-Ordner bietet das Formular keinen Upload an.
 				</p>
 				<div v-for="(label, variant) in FOLDER_LABELS" :key="variant" class="dr-folder">
 					<div>
@@ -201,6 +285,7 @@ import ImageSetting from '../components/ImageSetting.vue'
 const FOLDER_LABELS = {
 	unsigned: 'Hauptordner „nicht unterschrieben“',
 	signed: 'Hauptordner „unterschrieben“',
+	logos: 'Logo-Ordner (optional)',
 }
 
 const loading = ref(true)
@@ -215,11 +300,21 @@ const smtpPasswordSet = ref(false)
 const placeholders = ref({})
 const testAddress = ref(getCurrentUser()?.email ?? '')
 const testing = ref(false)
+const sponsorSmtpPassword = ref('')
+const sponsorSmtpPasswordSet = ref(false)
+const sponsorMailMissing = ref([])
+const sponsorPlaceholders = ref({})
+const confirmPlaceholders = ref({})
+const sponsorTestAddress = ref(getCurrentUser()?.email ?? '')
 
 // NcTextField type=number still yields a string
 const smtpPort = computed({
 	get: () => String(values.value.smtp_port ?? ''),
 	set: (v) => { values.value.smtp_port = parseInt(v, 10) || 0 },
+})
+const sponsorSmtpPort = computed({
+	get: () => String(values.value.sponsor_smtp_port ?? ''),
+	set: (v) => { values.value.sponsor_smtp_port = parseInt(v, 10) || 0 },
 })
 
 // § 63 Abs. 5 AO: Freistellungsbescheid max. 5, Feststellung nach § 60a max. 3 Jahre alt.
@@ -246,14 +341,23 @@ function apply(data) {
 	smtpPasswordSet.value = data.smtpPasswordSet
 	placeholders.value = data.placeholders
 	smtpPassword.value = ''
+	sponsorSmtpPasswordSet.value = data.sponsorSmtpPasswordSet
+	sponsorMailMissing.value = data.sponsorMailMissing
+	sponsorPlaceholders.value = data.sponsorPlaceholders
+	confirmPlaceholders.value = data.confirmPlaceholders
+	sponsorSmtpPassword.value = ''
 }
 
-async function sendTest() {
+/**
+ * @param {string} account '' (receipts) or 'sponsor_'
+ */
+async function sendTest(account) {
 	testing.value = true
+	const to = account ? sponsorTestAddress.value : testAddress.value
 	try {
 		if (await save()) {
-			await sendTestMail(testAddress.value)
-			showSuccess(`Testmail an ${testAddress.value} gesendet`)
+			await sendTestMail(to, account)
+			showSuccess(`Testmail an ${to} gesendet`)
 		}
 	} catch (e) {
 		showError(errorMessage(e))
@@ -323,7 +427,11 @@ onMounted(async () => {
 async function save() {
 	saving.value = true
 	try {
-		apply(await updateSettings({ ...values.value, smtp_password: smtpPassword.value }))
+		apply(await updateSettings({
+			...values.value,
+			smtp_password: smtpPassword.value,
+			sponsor_smtp_password: sponsorSmtpPassword.value,
+		}))
 		showSuccess('Einstellungen gespeichert')
 		return true
 	} catch (e) {

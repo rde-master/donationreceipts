@@ -91,10 +91,90 @@ export async function sendReceiptMail(id, mail) {
 	return (await axios.post(base(`/receipts/${id}/mail`), mail)).data
 }
 
-export async function sendTestMail(to) {
-	return (await axios.post(base('/mail/test'), { to })).data
+export async function sendTestMail(to, account = '') {
+	return (await axios.post(base('/mail/test'), { to, account })).data
 }
 
 export async function setAllowedGroup(groupId) {
 	return (await axios.put(base('/admin/group'), { groupId })).data
+}
+
+export async function listSponsors(search = '') {
+	return (await axios.get(base('/sponsors'), { params: { search } })).data
+}
+
+export async function getSponsor(id) {
+	return (await axios.get(base(`/sponsors/${id}`))).data
+}
+
+export async function createSponsor(sponsor) {
+	return (await axios.post(base('/sponsors'), { sponsor })).data
+}
+
+export async function updateSponsor(id, sponsor) {
+	return (await axios.put(base(`/sponsors/${id}`), { sponsor })).data
+}
+
+export async function deleteSponsor(id) {
+	return (await axios.delete(base(`/sponsors/${id}`))).data
+}
+
+export async function importSponsors(donorIds) {
+	return (await axios.post(base('/sponsors/import'), { donorIds })).data
+}
+
+export async function listLetterTemplates() {
+	return (await axios.get(base('/letter-templates'))).data
+}
+
+export async function createLetterTemplate(template) {
+	return (await axios.post(base('/letter-templates'), template)).data
+}
+
+export async function updateLetterTemplate(id, template) {
+	return (await axios.put(base(`/letter-templates/${id}`), template)).data
+}
+
+export async function deleteLetterTemplate(id) {
+	return (await axios.delete(base(`/letter-templates/${id}`))).data
+}
+
+export async function listCampaigns() {
+	return (await axios.get(base('/campaigns'))).data
+}
+
+export async function createCampaign(name) {
+	return (await axios.post(base('/campaigns'), { name })).data
+}
+
+export async function getCampaign(id) {
+	return (await axios.get(base(`/campaigns/${id}`))).data
+}
+
+export async function updateCampaign(id, campaign) {
+	return (await axios.put(base(`/campaigns/${id}`), campaign)).data
+}
+
+export async function deleteCampaign(id) {
+	return (await axios.delete(base(`/campaigns/${id}`))).data
+}
+
+export async function previewLetter(campaignId, letter) {
+	return (await axios.post(base(`/campaigns/${campaignId}/preview`), letter)).data
+}
+
+export async function sendLetters(campaignId, letter) {
+	return (await axios.post(base(`/campaigns/${campaignId}/send`), letter)).data
+}
+
+export async function listOpenResponses() {
+	return (await axios.get(base('/inquiries/open'))).data
+}
+
+export async function receiveDonation(inquiryId, receipt) {
+	return (await axios.post(base(`/inquiries/${inquiryId}/receive`), { receipt })).data
+}
+
+export function logoUrl(inquiryId) {
+	return base(`/inquiries/${inquiryId}/logo`)
 }

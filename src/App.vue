@@ -17,6 +17,22 @@
 						<NcIconSvgWrapper :path="mdiFileDocumentOutline" />
 					</template>
 				</NcAppNavigationItem>
+				<NcAppNavigationCaption name="Sponsoren anschreiben" />
+				<NcAppNavigationItem name="Aktionen" :to="{ name: 'campaigns' }" :active="route.path.startsWith('/aktionen')">
+					<template #icon>
+						<NcIconSvgWrapper :path="mdiBullhornOutline" />
+					</template>
+				</NcAppNavigationItem>
+				<NcAppNavigationItem name="Sponsoren" :to="{ name: 'sponsors' }" :active="route.path.startsWith('/sponsoren')">
+					<template #icon>
+						<NcIconSvgWrapper :path="mdiHandshakeOutline" />
+					</template>
+				</NcAppNavigationItem>
+				<NcAppNavigationItem name="Vorlagen" :to="{ name: 'templates' }">
+					<template #icon>
+						<NcIconSvgWrapper :path="mdiEmailEditOutline" />
+					</template>
+				</NcAppNavigationItem>
 			</template>
 			<template #footer>
 				<NcAppNavigationItem name="Einstellungen" :to="{ name: 'settings' }">
@@ -34,9 +50,10 @@
 </template>
 
 <script setup>
-import { mdiAccountGroupOutline, mdiCogOutline, mdiFileDocumentOutline, mdiViewDashboardOutline } from '@mdi/js'
+import { mdiAccountGroupOutline, mdiBullhornOutline, mdiCogOutline, mdiEmailEditOutline, mdiFileDocumentOutline, mdiHandshakeOutline, mdiViewDashboardOutline } from '@mdi/js'
 import NcAppContent from '@nextcloud/vue/components/NcAppContent'
 import NcAppNavigation from '@nextcloud/vue/components/NcAppNavigation'
+import NcAppNavigationCaption from '@nextcloud/vue/components/NcAppNavigationCaption'
 import NcAppNavigationItem from '@nextcloud/vue/components/NcAppNavigationItem'
 import NcContent from '@nextcloud/vue/components/NcContent'
 import NcIconSvgWrapper from '@nextcloud/vue/components/NcIconSvgWrapper'

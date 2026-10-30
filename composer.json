@@ -19,8 +19,10 @@
     },
     "require-dev": {
         "doctrine/dbal": "^3.9",
+        "egulias/email-validator": "^4.0",
         "nextcloud/ocp": "dev-stable32",
-        "phpunit/phpunit": "^10.5"
+        "phpunit/phpunit": "^10.5",
+        "symfony/mime": "^6.4"
     },
     "config": {
         "platform": {
