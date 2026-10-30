@@ -96,7 +96,7 @@ class SponsorService {
     public function delete(int $id): void {
         $sponsor = $this->mapper->find($id);
         if ($this->inquiries->countBySponsor($id) > 0) {
-            throw new ValidationException('Der Sponsor wurde schon angeschrieben und kann nicht gelöscht werden');
+            throw new ValidationException('Der mögliche Sponsor wurde schon angeschrieben und kann nicht gelöscht werden');
         }
         $this->mapper->delete($sponsor);
     }

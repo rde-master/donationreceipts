@@ -17,14 +17,12 @@ use OCA\DonationReceipts\Db\SponsorMapper;
 use OCA\DonationReceipts\Exception\ValidationException;
 use OCA\DonationReceipts\Mail\MailHtml;
 use OCA\DonationReceipts\Mail\SmtpSender;
-use OCA\DonationReceipts\Notification\Notifier;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Utility\ITimeFactory;
-use OCP\IGroupManager;
 use OCP\IURLGenerator;
-use OCP\Notification\IManager as INotificationManager;
 use OCP\Security\ISecureRandom;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\Mime\Email;
 
 /**
  * Letters to sponsors and their responses:
@@ -69,10 +67,8 @@ class InquiryService {
         private MailService $mailService,
         private SettingsService $settings,
         private StorageService $storage,
-        private AccessService $access,
         private SmtpSender $sender,
-        private IGroupManager $groupManager,
-        private INotificationManager $notifications,
+        private GroupNotifier $groupNotifier,
         private IURLGenerator $urlGenerator,
         private ISecureRandom $random,
         private ITimeFactory $time,
@@ -183,7 +179,7 @@ class InquiryService {
         }
         $sponsorIds = array_values(array_unique(array_map('intval', $sponsorIds)));
         if ($sponsorIds === []) {
-            throw new ValidationException('Bitte mindestens einen Sponsor auswählen');
+            throw new ValidationException('Bitte mindestens einen möglichen Sponsor auswählen');
         }
         if (count($sponsorIds) > self::MAX_RECIPIENTS) {
             throw new ValidationException('Höchstens ' . self::MAX_RECIPIENTS . ' Empfänger auf einmal');
@@ -201,12 +197,12 @@ class InquiryService {
             try {
                 $sponsor = $this->sponsors->find($sponsorId);
             } catch (DoesNotExistException) {
-                throw new ValidationException('Ein ausgewählter Sponsor existiert nicht mehr');
+                throw new ValidationException('Ein ausgewählter möglicher Sponsor existiert nicht mehr');
             }
             $inquiry = $this->inquiries->findByCampaignAndSponsor($campaignId, $sponsorId) ?? $this->createInquiry($campaign, $sponsor, $uid);
             $values = SponsorTemplate::values($sponsor, $campaign, $this->link($inquiry), $orgName);
-            $emails[$sponsorId] = $this->sender->newEmail(SettingsService::ACCOUNT_SPONSORS, $sponsor->getEmail(),
-                MailTemplate::render($subject, $values), MailHtml::render($body, $values));
+            $emails[$sponsorId] = $this->withMessageId($this->sender->newEmail(SettingsService::ACCOUNT_SPONSORS, $sponsor->getEmail(),
+                MailTemplate::render($subject, $values), MailHtml::render($body, $values)), $inquiry);
             $targets[$sponsorId] = [$sponsor, $inquiry];
         }
 
@@ -301,10 +297,83 @@ class InquiryService {
             }
         }
 
-        $this->notifyGroup($inquiry, $sponsor, $campaign, $isUpdate);
+        $this->groupNotifier->response($inquiry, $sponsor, $campaign, $isUpdate);
         $this->sendConfirmation($inquiry, $sponsor, $campaign);
 
         return $this->publicView($token) + ['logoWarning' => $logoWarning];
+    }
+
+    /**
+     * A group member enters or corrects a response (e.g. after a phone
+     * call) - also for sponsors that were never written to, and in closed
+     * campaigns. Same checks as the form; no notification of the group.
+     *
+     * @param array<string, mixed> $data response fields as in the form
+     * @throws ValidationException
+     * @throws DoesNotExistException unknown campaign or sponsor
+     */
+    public function respondManually(int $campaignId, int $sponsorId, array $data, bool $sendConfirmation, string $uid): Inquiry {
+        $campaign = $this->campaigns->find($campaignId);
+        $sponsor = $this->sponsors->find($sponsorId);
+        $inquiry = $this->inquiries->findByCampaignAndSponsor($campaignId, $sponsorId) ?? $this->createInquiry($campaign, $sponsor, $uid);
+        if ($inquiry->isReceived()) {
+            throw new ValidationException('Die Spende ist schon eingegangen; die Rückmeldung kann nicht mehr geändert werden');
+        }
+        $this->applyResponse($inquiry, $data);
+        $now = $this->time->getTime();
+        if (!$inquiry->hasResponse()) {
+            $inquiry->setRespondedAt($now);
+        }
+        $inquiry->setResponseBy($uid);
+        $inquiry->setUpdatedAt($now);
+        $inquiry = $this->inquiries->update($inquiry);
+        if ($sendConfirmation) {
+            $this->sendConfirmation($inquiry, $sponsor, $campaign);
+        }
+        return $inquiry;
+    }
+
+    /**
+     * All responses (optionally of one campaign) for the list and export.
+     *
+     * @return list<Inquiry>
+     */
+    public function responses(?int $campaignId = null): array {
+        return $this->inquiries->findResponses($campaignId);
+    }
+
+    /**
+     * Message-ID of mails about an inquiry: replies quote it in
+     * In-Reply-To/References, so ReplyService can assign them.
+     * "dr.<inquiry id>.<first 8 characters of the token>.<random>@<sender domain>"
+     */
+    public function withMessageId(Email $email, Inquiry $inquiry): Email {
+        $from = $this->settings->getString(SettingsService::ACCOUNT_SPONSORS . 'smtp_from_email');
+        $domain = str_contains($from, '@') ? substr($from, strrpos($from, '@') + 1) : 'localhost';
+        $email->getHeaders()->addIdHeader('Message-ID', sprintf('dr.%d.%s.%s@%s',
+            $inquiry->getId(), substr($inquiry->getToken(), 0, 8), $this->random->generate(12, ISecureRandom::CHAR_LOWER . ISecureRandom::CHAR_DIGITS), $domain));
+        return $email;
+    }
+
+    /**
+     * The inquiry a reply refers to, from its In-Reply-To/References.
+     */
+    public function findByMessageReference(string $references): ?Inquiry {
+        if (preg_match_all('/<dr\.(\d+)\.([A-Za-z0-9]{8})\.[a-z0-9]+@[^>]+>/', $references, $matches, PREG_SET_ORDER) === 0) {
+            return null;
+        }
+        foreach (array_reverse($matches) as [, $id, $tokenStart]) {
+            try {
+                $inquiry = $this->inquiries->find((int)$id);
+            } catch (DoesNotExistException) {
+                continue;
+            }
+            // the token part keeps a guessed id from matching
+            if (hash_equals(substr($inquiry->getToken(), 0, 8), $tokenStart)) {
+                return $inquiry;
+            }
+        }
+        return null;
     }
 
     /**
@@ -536,36 +605,6 @@ class InquiryService {
         ]);
     }
 
-    private function notifyGroup(Inquiry $inquiry, Sponsor $sponsor, Campaign $campaign, bool $isUpdate): void {
-        $group = $this->groupManager->get($this->access->getAllowedGroup());
-        if ($group === null) {
-            return;
-        }
-        try {
-            // An earlier notification about the same inquiry is replaced.
-            $previous = $this->notifications->createNotification();
-            $previous->setApp(Application::APP_ID)->setObject('inquiry', (string)$inquiry->getId());
-            $this->notifications->markProcessed($previous);
-
-            foreach ($group->getUsers() as $user) {
-                $notification = $this->notifications->createNotification();
-                $notification->setApp(Application::APP_ID)
-                    ->setUser($user->getUID())
-                    ->setDateTime(new \DateTime('@' . $this->time->getTime()))
-                    ->setObject('inquiry', (string)$inquiry->getId())
-                    ->setSubject(Notifier::SUBJECT_RESPONSE, [
-                        'sponsor' => $sponsor->getName(),
-                        'campaign' => $campaign->getName(),
-                        'campaignId' => $campaign->getId(),
-                        'update' => $isUpdate,
-                    ]);
-                $this->notifications->notify($notification);
-            }
-        } catch (\Throwable $e) {
-            $this->logger->error('Notifying about sponsor response failed', ['exception' => $e]);
-        }
-    }
-
     /**
      * Confirmation to the sponsor's address. Failing (or no SMTP account)
      * does not affect the saved response.
@@ -577,12 +616,12 @@ class InquiryService {
         $values = SponsorTemplate::values($sponsor, $campaign, $this->link($inquiry), $this->settings->getString('org_name'))
             + ['angaben' => SponsorTemplate::summary($inquiry)];
         try {
-            $this->sender->send(SettingsService::ACCOUNT_SPONSORS, $this->sender->newEmail(
+            $this->sender->send(SettingsService::ACCOUNT_SPONSORS, $this->withMessageId($this->sender->newEmail(
                 SettingsService::ACCOUNT_SPONSORS,
                 $sponsor->getEmail(),
                 MailTemplate::render($this->settings->getString('confirm_subject'), $values),
                 MailHtml::render(MailHtml::sanitize($this->settings->getString('confirm_body')), $values),
-            ));
+            ), $inquiry));
         } catch (ValidationException $e) {
             $this->logger->warning('Sending sponsor confirmation failed: ' . $e->getMessage());
         }

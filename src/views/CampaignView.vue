@@ -68,9 +68,9 @@
 			</div>
 
 			<p v-if="!rows.length" class="dr-muted">
-				Es gibt noch keine Sponsoren. Lege sie unter
+				Es gibt noch keine möglichen Sponsoren. Lege sie unter
 				<RouterLink :to="{ name: 'sponsors' }">
-					Sponsoren
+					Mögliche Sponsoren
 				</RouterLink> an.
 			</p>
 			<table v-else class="dr-table">
@@ -82,7 +82,7 @@
 								aria-label="Alle angezeigten auswählen"
 								@update:model-value="selectAll" />
 						</th>
-						<th>Sponsor</th>
+						<th>Möglicher Sponsor</th>
 						<th>Status</th>
 						<th class="dr-num">
 							Spende
@@ -107,6 +107,14 @@
 						</td>
 						<td>
 							<span :class="statusClass(row)">{{ statusText(row) }}</span>
+							<div v-if="row.inquiry?.responseBy" class="dr-muted">
+								manuell erfasst
+							</div>
+							<div v-if="openReplies[row.sponsor.id]">
+								<RouterLink :to="{ name: 'replies' }" class="dr-warning">
+									{{ openReplies[row.sponsor.id] === 1 ? '1 Antwort-Mail' : `${openReplies[row.sponsor.id]} Antwort-Mails` }} zu bearbeiten
+								</RouterLink>
+							</div>
 						</td>
 						<td class="dr-num">
 							<template v-if="row.inquiry?.response">
@@ -130,6 +138,15 @@
 									@click="responseRow = row">
 									{{ row.inquiry.receiptId ? 'Ansehen' : 'Rückmeldung' }}
 								</NcButton>
+								<NcButton v-if="!row.inquiry?.receiptId"
+									variant="tertiary"
+									:aria-label="row.inquiry?.response ? `Rückmeldung von ${row.sponsor.name} bearbeiten` : `Rückmeldung von ${row.sponsor.name} erfassen`"
+									:title="row.inquiry?.response ? 'Rückmeldung bearbeiten' : 'Rückmeldung manuell erfassen'"
+									@click="manualRow = row">
+									<template #icon>
+										<NcIconSvgWrapper :path="row.inquiry?.response ? mdiPencil : mdiClipboardEditOutline" />
+									</template>
+								</NcButton>
 								<NcButton v-if="row.inquiry"
 									variant="tertiary"
 									:aria-label="`Rückmelde-Link von ${row.sponsor.name} kopieren`"
@@ -151,6 +168,14 @@
 			:sponsors="rows.filter((r) => selected.includes(r.sponsor.id)).map((r) => r.sponsor)"
 			@sent="afterSend"
 			@close="letterOpen = false" />
+
+		<ResponseFormDialog v-if="manualRow"
+			:campaign-id="Number(id)"
+			:sponsor="manualRow.sponsor"
+			:inquiry="manualRow.inquiry"
+			:ticket-labels="data.ticketLabels"
+			@saved="load"
+			@close="manualRow = null" />
 
 		<ResponseDialog v-if="responseRow"
 			:inquiry="responseRow.inquiry"
@@ -178,7 +203,7 @@
 </template>
 
 <script setup>
-import { mdiDelete, mdiLinkVariant, mdiLockOpenVariantOutline, mdiLockOutline, mdiPencil, mdiSend } from '@mdi/js'
+import { mdiClipboardEditOutline, mdiDelete, mdiLinkVariant, mdiLockOpenVariantOutline, mdiLockOutline, mdiPencil, mdiSend } from '@mdi/js'
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwitch'
@@ -190,10 +215,11 @@ import NcSelect from '@nextcloud/vue/components/NcSelect'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { deleteCampaign, errorMessage, getCampaign, logoUrl, updateCampaign } from '../api.js'
+import { deleteCampaign, errorMessage, getCampaign, listReplies, logoUrl, updateCampaign } from '../api.js'
 import StatTile from '../components/charts/StatTile.vue'
 import LetterDialog from '../components/LetterDialog.vue'
 import ResponseDialog from '../components/ResponseDialog.vue'
+import ResponseFormDialog from '../components/ResponseFormDialog.vue'
 import { formatAmount, formatDateTime } from '../format.js'
 
 const props = defineProps({
@@ -201,7 +227,7 @@ const props = defineProps({
 })
 
 const FILTERS = [
-	{ id: 'all', label: 'Alle Sponsoren' },
+	{ id: 'all', label: 'Alle möglichen Sponsoren' },
 	{ id: 'new', label: 'Noch nicht angeschrieben' },
 	{ id: 'waiting', label: 'Ohne Rückmeldung' },
 	{ id: 'open', label: 'Zusage, Spende offen' },
@@ -214,6 +240,9 @@ const filter = ref(FILTERS[0])
 const selected = ref([])
 const letterOpen = ref(false)
 const responseRow = ref(null)
+const manualRow = ref(null)
+// open reply mails per sponsor id
+const openReplies = ref({})
 const renameOpen = ref(false)
 const newName = ref('')
 
@@ -282,7 +311,12 @@ async function copyLink(link) {
 
 async function load() {
 	try {
-		data.value = await getCampaign(props.id)
+		const [campaignData, replies] = await Promise.all([
+			getCampaign(props.id),
+			listReplies({ status: 'open', campaignId: props.id }),
+		])
+		openReplies.value = replies.replies.reduce((counts, r) => ({ ...counts, [r.sponsorId]: (counts[r.sponsorId] ?? 0) + 1 }), {})
+		data.value = campaignData
 		newName.value = data.value.campaign.name
 	} catch (e) {
 		showError(errorMessage(e))

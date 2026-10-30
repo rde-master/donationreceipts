@@ -188,6 +188,69 @@
 			</section>
 
 			<section>
+				<h3>Sponsoren-Anschreiben: Antworten abrufen (IMAP)</h3>
+				<p class="dr-muted">
+					Die App liest alle 10 Minuten neue Mails im Postfach der Anschreiben – nur lesend, Mails
+					bleiben unverändert und ungelesen. Übernommen werden Antworten auf Anschreiben und Mails von
+					Adressen möglicher Sponsoren; sie erscheinen unter „Antworten“ als Aufgabe. Ältere Mails
+					werden beim ersten Abruf nicht übernommen.
+				</p>
+				<NcCheckboxRadioSwitch v-model="values.sponsor_imap_enabled" type="switch">
+					Antworten automatisch abrufen
+				</NcCheckboxRadioSwitch>
+				<div class="dr-row">
+					<NcTextField v-model="values.sponsor_imap_host" label="IMAP-Server" placeholder="imap.example.org" />
+					<NcTextField v-model="imapPort"
+						type="number"
+						label="Port"
+						class="dr-zip" />
+				</div>
+				<div class="dr-row dr-radios">
+					<NcCheckboxRadioSwitch v-model="values.sponsor_imap_security"
+						type="radio"
+						value="ssl"
+						name="sponsor_imap_security"
+						@update:model-value="values.sponsor_imap_port = 993">
+						SSL/TLS (Port 993)
+					</NcCheckboxRadioSwitch>
+					<NcCheckboxRadioSwitch v-model="values.sponsor_imap_security"
+						type="radio"
+						value="starttls"
+						name="sponsor_imap_security"
+						@update:model-value="values.sponsor_imap_port = 143">
+						STARTTLS (Port 143)
+					</NcCheckboxRadioSwitch>
+				</div>
+				<div class="dr-row">
+					<NcTextField v-model="values.sponsor_imap_user"
+						label="Benutzer"
+						autocomplete="off"
+						placeholder="leer = wie SMTP" />
+					<NcPasswordField v-model="imapPassword"
+						label="Passwort"
+						autocomplete="new-password"
+						:placeholder="imapPasswordSet ? 'gespeichert – leer lassen zum Behalten' : 'leer = wie SMTP'" />
+				</div>
+				<NcTextField v-model="values.sponsor_imap_folder" label="Ordner" placeholder="INBOX" />
+				<div class="dr-row">
+					<NcButton :disabled="testing" @click="testImapConnection">
+						Speichern und Verbindung testen
+					</NcButton>
+				</div>
+			</section>
+
+			<section>
+				<h3>Benachrichtigungen</h3>
+				<p class="dr-muted">
+					Bei jeder Rückmeldung über das Formular und jeder neuen Antwort-Mail bekommen alle
+					Mitglieder der berechtigten Gruppe eine Nextcloud-Benachrichtigung.
+				</p>
+				<NcCheckboxRadioSwitch v-model="values.notify_group_mail" type="switch">
+					Zusätzlich eine E-Mail an die Gruppenmitglieder (an ihre Adresse in Nextcloud)
+				</NcCheckboxRadioSwitch>
+			</section>
+
+			<section>
 				<h3>Rückmeldeformular</h3>
 				<NcTextArea v-model="values.response_intro"
 					label="Text über dem Formular"
@@ -277,7 +340,7 @@ import NcPasswordField from '@nextcloud/vue/components/NcPasswordField'
 import NcTextArea from '@nextcloud/vue/components/NcTextArea'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
 import { computed, defineAsyncComponent, onMounted, ref } from 'vue'
-import { errorMessage, getSettings, sendTestMail, setMainFolder, updateSettings } from '../api.js'
+import { errorMessage, getSettings, sendTestMail, setMainFolder, testImap, updateSettings } from '../api.js'
 import ImageSetting from '../components/ImageSetting.vue'
 
 // Tiptap is large: only loaded where a mail text is edited
@@ -307,11 +370,17 @@ const sponsorMailMissing = ref([])
 const sponsorPlaceholders = ref({})
 const confirmPlaceholders = ref({})
 const sponsorTestAddress = ref(getCurrentUser()?.email ?? '')
+const imapPassword = ref('')
+const imapPasswordSet = ref(false)
 
 // NcTextField type=number still yields a string
 const smtpPort = computed({
 	get: () => String(values.value.smtp_port ?? ''),
 	set: (v) => { values.value.smtp_port = parseInt(v, 10) || 0 },
+})
+const imapPort = computed({
+	get: () => String(values.value.sponsor_imap_port ?? ''),
+	set: (v) => { values.value.sponsor_imap_port = parseInt(v, 10) || 0 },
 })
 const sponsorSmtpPort = computed({
 	get: () => String(values.value.sponsor_smtp_port ?? ''),
@@ -347,6 +416,22 @@ function apply(data) {
 	sponsorPlaceholders.value = data.sponsorPlaceholders
 	confirmPlaceholders.value = data.confirmPlaceholders
 	sponsorSmtpPassword.value = ''
+	imapPasswordSet.value = data.imapPasswordSet
+	imapPassword.value = ''
+}
+
+async function testImapConnection() {
+	testing.value = true
+	try {
+		if (await save()) {
+			const { messages } = await testImap()
+			showSuccess(`Verbindung in Ordnung – ${messages} Mails im Ordner`)
+		}
+	} catch (e) {
+		showError(errorMessage(e))
+	} finally {
+		testing.value = false
+	}
 }
 
 /**
@@ -432,6 +517,7 @@ async function save() {
 			...values.value,
 			smtp_password: smtpPassword.value,
 			sponsor_smtp_password: sponsorSmtpPassword.value,
+			sponsor_imap_password: imapPassword.value,
 		}))
 		showSuccess('Einstellungen gespeichert')
 		return true

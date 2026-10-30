@@ -8,6 +8,8 @@ import DonorView from './views/DonorView.vue'
 import ReceiptFormView from './views/ReceiptFormView.vue'
 import ReceiptsView from './views/ReceiptsView.vue'
 import ReceiptView from './views/ReceiptView.vue'
+import RepliesView from './views/RepliesView.vue'
+import ResponsesView from './views/ResponsesView.vue'
 import SettingsView from './views/SettingsView.vue'
 import SponsorFormView from './views/SponsorFormView.vue'
 import SponsorsView from './views/SponsorsView.vue'
@@ -31,6 +33,8 @@ export default createRouter({
 		{ path: '/sponsoren/:id(\\d+)', name: 'sponsor-edit', component: SponsorFormView, props: true },
 		{ path: '/aktionen', name: 'campaigns', component: CampaignsView },
 		{ path: '/aktionen/:id(\\d+)', name: 'campaign', component: CampaignView, props: true },
+		{ path: '/rueckmeldungen', name: 'responses', component: ResponsesView },
+		{ path: '/antworten', name: 'replies', component: RepliesView },
 		{ path: '/vorlagen', name: 'templates', component: TemplatesView },
 		{ path: '/einstellungen', name: 'settings', component: SettingsView },
 	],

@@ -46,7 +46,12 @@ class SettingsController extends Controller {
                 $passwords[$account] = $values[$account . 'smtp_password'] ?? '';
                 unset($values[$account . 'smtp_password']);
             }
+            $imapPassword = $values['sponsor_imap_password'] ?? '';
+            unset($values['sponsor_imap_password']);
             $this->settings->update($values);
+            if (is_string($imapPassword) && $imapPassword !== '') {
+                $this->settings->setImapPassword($imapPassword);
+            }
             foreach ($passwords as $account => $password) {
                 if (is_string($password) && $password !== '') {
                     $this->settings->setSmtpPassword($password, $account);
@@ -83,6 +88,7 @@ class SettingsController extends Controller {
             'placeholders' => MailTemplate::PLACEHOLDERS,
             'sponsorSmtpPasswordSet' => $this->settings->hasSmtpPassword(SettingsService::ACCOUNT_SPONSORS),
             'sponsorMailMissing' => $this->settings->missingForMail(SettingsService::ACCOUNT_SPONSORS),
+            'imapPasswordSet' => $this->settings->hasImapPassword(),
             'sponsorPlaceholders' => SponsorTemplate::PLACEHOLDERS,
             'confirmPlaceholders' => SponsorTemplate::CONFIRM_PLACEHOLDERS,
         ];

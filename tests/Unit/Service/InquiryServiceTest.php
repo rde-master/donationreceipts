@@ -15,8 +15,8 @@ use OCA\DonationReceipts\Db\Sponsor;
 use OCA\DonationReceipts\Db\SponsorMapper;
 use OCA\DonationReceipts\Exception\ValidationException;
 use OCA\DonationReceipts\Mail\SmtpSender;
-use OCA\DonationReceipts\Service\AccessService;
 use OCA\DonationReceipts\Service\DonorService;
+use OCA\DonationReceipts\Service\GroupNotifier;
 use OCA\DonationReceipts\Service\InquiryService;
 use OCA\DonationReceipts\Service\MailService;
 use OCA\DonationReceipts\Service\ReceiptService;
@@ -24,9 +24,7 @@ use OCA\DonationReceipts\Service\SettingsService;
 use OCA\DonationReceipts\Service\SponsorService;
 use OCA\DonationReceipts\Service\StorageService;
 use OCP\AppFramework\Utility\ITimeFactory;
-use OCP\IGroupManager;
 use OCP\IURLGenerator;
-use OCP\Notification\IManager as INotificationManager;
 use OCP\Security\ISecureRandom;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -50,6 +48,7 @@ class InquiryServiceTest extends TestCase {
     private ReceiptService&MockObject $receiptService;
     private MailService&MockObject $mailService;
     private SponsorService&MockObject $sponsorService;
+    private GroupNotifier&MockObject $groupNotifier;
     private Campaign $campaign;
     private Sponsor $sponsor;
     private Inquiry $inquiry;
@@ -95,6 +94,7 @@ class InquiryServiceTest extends TestCase {
         $this->receiptService = $this->createMock(ReceiptService::class);
         $this->mailService = $this->createMock(MailService::class);
         $this->sponsorService = $this->createMock(SponsorService::class);
+        $this->groupNotifier = $this->createMock(GroupNotifier::class);
 
         $urls = $this->createMock(IURLGenerator::class);
         $urls->method('linkToRouteAbsolute')->willReturnCallback(
@@ -108,9 +108,8 @@ class InquiryServiceTest extends TestCase {
         $this->service = new InquiryService(
             $this->inquiries, $campaigns, $sponsors, $this->createMock(DonorMapper::class),
             $this->sponsorService, $this->donorService, $this->receiptService, $this->mailService,
-            $this->settings, $this->createMock(StorageService::class), $this->createMock(AccessService::class),
-            $this->sender, $this->createMock(IGroupManager::class), $this->createMock(INotificationManager::class),
-            $urls, $random, $time, $this->createMock(LoggerInterface::class),
+            $this->settings, $this->createMock(StorageService::class),
+            $this->sender, $this->groupNotifier, $urls, $random, $time, $this->createMock(LoggerInterface::class),
         );
     }
 
@@ -130,6 +129,32 @@ class InquiryServiceTest extends TestCase {
         $this->assertNull($this->inquiry->getGoodsOrigin());
         $this->assertTrue($view['editable']);
         $this->assertNull($view['logoWarning']);
+    }
+
+    public function testRespondNotifiesGroup(): void {
+        $this->settings->method('missingForMail')->willReturn([]);
+        $this->groupNotifier->expects($this->once())->method('response')->with($this->inquiry, $this->sponsor, $this->campaign, false);
+        $this->service->respond(self::TOKEN, self::RESPONSE, null);
+    }
+
+    public function testManualResponseWorksInClosedCampaignWithoutNotification(): void {
+        $this->campaign->setClosed(true);
+        $this->inquiries->method('findByCampaignAndSponsor')->willReturn(null);
+        $this->groupNotifier->expects($this->never())->method('response');
+        $this->sender->expects($this->never())->method('send');
+
+        $inquiry = $this->service->respondManually(3, 9, self::RESPONSE, false, 'kasse');
+
+        $this->assertSame('kasse', $inquiry->getResponseBy());
+        $this->assertSame('NEWTOKEN000000000000000000000000', $inquiry->getToken());
+        $this->assertSame(1_800_000_000, $inquiry->getRespondedAt());
+        $this->assertNull($inquiry->getSentAt());
+    }
+
+    public function testMessageReferenceNeedsMatchingToken(): void {
+        $this->assertSame($this->inquiry, $this->service->findByMessageReference('<x@y> <dr.5.abcdefgh.k3j2@verein.de>'));
+        $this->assertNull($this->service->findByMessageReference('<dr.5.XXXXXXXX.k3j2@verein.de>'));
+        $this->assertNull($this->service->findByMessageReference('<CAF+abc@mail.gmail.com>'));
     }
 
     public function testRespondWithoutSponsorAccountSkipsConfirmation(): void {

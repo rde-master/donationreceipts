@@ -212,13 +212,26 @@ async function insertImage(event) {
 	border-bottom: 1px solid var(--color-border);
 }
 
-.dr-editor__content :deep(.ProseMirror) {
+/* Nextcloud styles every div[contenteditable] like a small input (130px, border, margin) */
+.dr-editor__content :deep(.ProseMirror[contenteditable]) {
+	display: block;
+	width: 100%;
+	box-sizing: border-box;
 	min-height: 200px;
 	max-height: 60vh;
-	overflow-y: auto;
+	margin: 0;
 	padding: calc(var(--default-grid-baseline) * 3);
-	outline: none;
+	overflow-y: auto;
+	border: none;
+	border-radius: 0;
+	background: transparent;
+	color: var(--color-main-text);
+	font-size: var(--default-font-size);
 	line-height: 1.5;
+	white-space: pre-wrap;
+	cursor: text;
+	outline: none;
+	box-shadow: none;
 }
 
 /* Nextcloud's global styles reset these; show them as in the mail */

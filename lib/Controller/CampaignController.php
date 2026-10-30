@@ -129,6 +129,23 @@ class CampaignController extends Controller {
         }
     }
 
+    /**
+     * A group member enters or corrects the response of a sponsor.
+     *
+     * @param array<string, mixed> $response fields as in the response form
+     */
+    #[NoAdminRequired]
+    public function respond(int $id, int $sponsorId, array $response, bool $sendConfirmation = false): JSONResponse {
+        try {
+            $inquiry = $this->inquiries->respondManually($id, $sponsorId, $response, $sendConfirmation, $this->uid());
+            return new JSONResponse($this->serializeInquiry($inquiry));
+        } catch (ValidationException $e) {
+            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
+        } catch (DoesNotExistException) {
+            return new JSONResponse(['error' => 'Aktion oder möglicher Sponsor nicht gefunden'], Http::STATUS_NOT_FOUND);
+        }
+    }
+
     private function serializeInquiry(Inquiry $inquiry): array {
         return $inquiry->jsonSerialize() + ['link' => $this->inquiries->link($inquiry)];
     }

@@ -1,7 +1,7 @@
 <template>
 	<div class="dr-page">
 		<div class="dr-header">
-			<h2>Sponsoren</h2>
+			<h2>Mögliche Sponsoren</h2>
 			<div class="dr-actions">
 				<NcButton @click="openImport">
 					<template #icon>
@@ -13,7 +13,7 @@
 					<template #icon>
 						<NcIconSvgWrapper :path="mdiPlus" />
 					</template>
-					Neuer Sponsor
+					Neuer Eintrag
 				</NcButton>
 			</div>
 		</div>
@@ -26,8 +26,8 @@
 
 		<NcLoadingIcon v-if="loading" :size="32" />
 		<NcEmptyContent v-else-if="!sponsors.length"
-			:name="search ? 'Keine Treffer' : 'Noch keine Sponsoren'"
-			:description="search ? 'Kein Sponsor passt zur Suche.' : 'Lege Sponsoren an oder übernimm bestehende Spender.'">
+			:name="search ? 'Keine Treffer' : 'Noch keine möglichen Sponsoren'"
+			:description="search ? 'Kein Eintrag passt zur Suche.' : 'Lege mögliche Sponsoren an oder übernimm bestehende Spender.'">
 			<template #icon>
 				<NcIconSvgWrapper :path="mdiHandshakeOutline" />
 			</template>
@@ -57,12 +57,12 @@
 		</table>
 
 		<NcDialog v-if="importOpen"
-			name="Spender als Sponsoren übernehmen"
+			name="Spender als mögliche Sponsoren übernehmen"
 			size="normal"
 			@closing="importOpen = false">
 			<NcLoadingIcon v-if="!importable" :size="32" />
 			<p v-else-if="!importable.length" class="dr-muted">
-				Alle Spender mit E-Mail-Adresse sind schon Sponsoren.
+				Alle Spender mit E-Mail-Adresse stehen schon in der Liste.
 			</p>
 			<template v-else>
 				<p class="dr-muted">
@@ -143,7 +143,7 @@ async function runImport() {
 	importing.value = true
 	try {
 		const created = await importSponsors(selected.value)
-		showSuccess(`${created.length} Sponsoren übernommen`)
+		showSuccess(`${created.length} Spender übernommen`)
 		importOpen.value = false
 		await load()
 	} catch (e) {

@@ -53,10 +53,18 @@ return [
         ['name' => 'campaign#destroy', 'url' => '/api/campaigns/{id}', 'verb' => 'DELETE', 'requirements' => ['id' => '\d+']],
         ['name' => 'campaign#preview', 'url' => '/api/campaigns/{id}/preview', 'verb' => 'POST', 'requirements' => ['id' => '\d+']],
         ['name' => 'campaign#send', 'url' => '/api/campaigns/{id}/send', 'verb' => 'POST', 'requirements' => ['id' => '\d+']],
+        ['name' => 'campaign#respond', 'url' => '/api/campaigns/{id}/sponsors/{sponsorId}/response', 'verb' => 'PUT', 'requirements' => ['id' => '\d+', 'sponsorId' => '\d+']],
 
         ['name' => 'inquiry#open', 'url' => '/api/inquiries/open', 'verb' => 'GET'],
+        ['name' => 'inquiry#responses', 'url' => '/api/inquiries/responses', 'verb' => 'GET'],
         ['name' => 'inquiry#receive', 'url' => '/api/inquiries/{id}/receive', 'verb' => 'POST', 'requirements' => ['id' => '\d+']],
         ['name' => 'inquiry#logo', 'url' => '/api/inquiries/{id}/logo', 'verb' => 'GET', 'requirements' => ['id' => '\d+']],
+
+        ['name' => 'reply#index', 'url' => '/api/replies', 'verb' => 'GET'],
+        ['name' => 'reply#count', 'url' => '/api/replies/count', 'verb' => 'GET'],
+        ['name' => 'reply#fetch', 'url' => '/api/replies/fetch', 'verb' => 'POST'],
+        ['name' => 'reply#test', 'url' => '/api/replies/test', 'verb' => 'POST'],
+        ['name' => 'reply#update', 'url' => '/api/replies/{id}', 'verb' => 'PUT', 'requirements' => ['id' => '\d+']],
 
         ['name' => 'adminSettings#setGroup', 'url' => '/api/admin/group', 'verb' => 'PUT'],
 

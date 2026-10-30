@@ -60,6 +60,38 @@ class InquiryMapper extends QBMapper {
     }
 
     /**
+     * All responses, optionally of one campaign, newest first.
+     *
+     * @return list<Inquiry>
+     */
+    public function findResponses(?int $campaignId = null): array {
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('*')
+            ->from($this->getTableName())
+            ->where($qb->expr()->isNotNull('responded_at'));
+        if ($campaignId !== null) {
+            $qb->andWhere($qb->expr()->eq('campaign_id', $qb->createNamedParameter($campaignId, IQueryBuilder::PARAM_INT)));
+        }
+        $qb->orderBy('responded_at', 'DESC');
+        return $this->findEntities($qb);
+    }
+
+    /**
+     * The most recent inquiry to a sponsor (to assign a mail by its sender).
+     */
+    public function findLatestBySponsor(int $sponsorId): ?Inquiry {
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('*')
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq('sponsor_id', $qb->createNamedParameter($sponsorId, IQueryBuilder::PARAM_INT)))
+            ->orderBy('created_at', 'DESC')
+            ->addOrderBy('id', 'DESC')
+            ->setMaxResults(1);
+        $found = $this->findEntities($qb);
+        return $found[0] ?? null;
+    }
+
+    /**
      * Responses whose donation has not arrived yet, oldest first.
      *
      * @return list<Inquiry>

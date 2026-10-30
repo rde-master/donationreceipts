@@ -11,11 +11,12 @@ use OCP\Notification\INotifier;
 use OCP\Notification\UnknownNotificationException;
 
 /**
- * "Sponsor X hat auf Aktion Y geantwortet" for the members of the allowed
- * group (sent by InquiryService).
+ * For the members of the allowed group (sent by GroupNotifier): a sponsor
+ * responded via the form, or a reply mail arrived that needs handling.
  */
 class Notifier implements INotifier {
     public const SUBJECT_RESPONSE = 'response';
+    public const SUBJECT_REPLY = 'reply';
 
     public function __construct(
         private IURLGenerator $urlGenerator,
@@ -31,17 +32,23 @@ class Notifier implements INotifier {
     }
 
     public function prepare(INotification $notification, string $languageCode): INotification {
-        if ($notification->getApp() !== Application::APP_ID || $notification->getSubject() !== self::SUBJECT_RESPONSE) {
+        if ($notification->getApp() !== Application::APP_ID
+            || !in_array($notification->getSubject(), [self::SUBJECT_RESPONSE, self::SUBJECT_REPLY], true)) {
             throw new UnknownNotificationException();
         }
         $params = $notification->getSubjectParameters();
         $sponsor = (string)($params['sponsor'] ?? '');
         $campaign = (string)($params['campaign'] ?? '');
-        $text = !empty($params['update'])
-            ? "{$sponsor} hat die Rückmeldung zu „{$campaign}“ geändert"
-            : "{$sponsor} hat auf „{$campaign}“ geantwortet";
-        $notification->setParsedSubject($text);
-        $notification->setLink($this->urlGenerator->linkToRouteAbsolute(Application::APP_ID . '.page.index') . '#/aktionen/' . (int)($params['campaignId'] ?? 0));
+        $base = $this->urlGenerator->linkToRouteAbsolute(Application::APP_ID . '.page.index');
+        if ($notification->getSubject() === self::SUBJECT_REPLY) {
+            $notification->setParsedSubject("Antwort-Mail von {$sponsor}" . ($campaign !== '' ? " zu „{$campaign}“" : '') . ' – bitte bearbeiten');
+            $notification->setLink($base . '#/antworten');
+        } else {
+            $notification->setParsedSubject(!empty($params['update'])
+                ? "{$sponsor} hat die Rückmeldung zu „{$campaign}“ geändert"
+                : "{$sponsor} hat auf „{$campaign}“ geantwortet");
+            $notification->setLink($base . '#/aktionen/' . (int)($params['campaignId'] ?? 0));
+        }
         $notification->setIcon($this->urlGenerator->getAbsoluteURL($this->urlGenerator->imagePath(Application::APP_ID, 'app-dark.svg')));
         return $notification;
     }

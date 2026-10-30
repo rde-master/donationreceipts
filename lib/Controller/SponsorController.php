@@ -91,6 +91,6 @@ class SponsorController extends Controller {
     }
 
     private function notFound(): JSONResponse {
-        return new JSONResponse(['error' => 'Sponsor nicht gefunden'], Http::STATUS_NOT_FOUND);
+        return new JSONResponse(['error' => 'Möglicher Sponsor nicht gefunden'], Http::STATUS_NOT_FOUND);
     }
 }

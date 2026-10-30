@@ -23,7 +23,20 @@
 						<NcIconSvgWrapper :path="mdiBullhornOutline" />
 					</template>
 				</NcAppNavigationItem>
-				<NcAppNavigationItem name="Sponsoren" :to="{ name: 'sponsors' }" :active="route.path.startsWith('/sponsoren')">
+				<NcAppNavigationItem name="Rückmeldungen" :to="{ name: 'responses' }">
+					<template #icon>
+						<NcIconSvgWrapper :path="mdiClipboardTextOutline" />
+					</template>
+				</NcAppNavigationItem>
+				<NcAppNavigationItem name="Antworten" :to="{ name: 'replies' }">
+					<template #icon>
+						<NcIconSvgWrapper :path="mdiEmailArrowLeftOutline" />
+					</template>
+					<template v-if="openReplies" #counter>
+						<NcCounterBubble :count="openReplies" type="highlighted" />
+					</template>
+				</NcAppNavigationItem>
+				<NcAppNavigationItem name="Mögliche Sponsoren" :to="{ name: 'sponsors' }" :active="route.path.startsWith('/sponsoren')">
 					<template #icon>
 						<NcIconSvgWrapper :path="mdiHandshakeOutline" />
 					</template>
@@ -50,14 +63,40 @@
 </template>
 
 <script setup>
-import { mdiAccountGroupOutline, mdiBullhornOutline, mdiCogOutline, mdiEmailEditOutline, mdiFileDocumentOutline, mdiHandshakeOutline, mdiViewDashboardOutline } from '@mdi/js'
+import { mdiAccountGroupOutline, mdiBullhornOutline, mdiClipboardTextOutline, mdiCogOutline, mdiEmailArrowLeftOutline, mdiEmailEditOutline, mdiFileDocumentOutline, mdiHandshakeOutline, mdiViewDashboardOutline } from '@mdi/js'
 import NcAppContent from '@nextcloud/vue/components/NcAppContent'
 import NcAppNavigation from '@nextcloud/vue/components/NcAppNavigation'
 import NcAppNavigationCaption from '@nextcloud/vue/components/NcAppNavigationCaption'
 import NcAppNavigationItem from '@nextcloud/vue/components/NcAppNavigationItem'
 import NcContent from '@nextcloud/vue/components/NcContent'
+import NcCounterBubble from '@nextcloud/vue/components/NcCounterBubble'
 import NcIconSvgWrapper from '@nextcloud/vue/components/NcIconSvgWrapper'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { countOpenReplies } from './api.js'
 
 const route = useRoute()
+
+// open reply mails (tasks), refreshed on navigation, every 2 minutes and when RepliesView changes one
+const openReplies = ref(0)
+
+async function refreshOpenReplies() {
+	try {
+		openReplies.value = await countOpenReplies()
+	} catch {
+		// the counter is a convenience; errors show up on the pages
+	}
+}
+
+let timer
+onMounted(() => {
+	refreshOpenReplies()
+	timer = setInterval(refreshOpenReplies, 120000)
+	window.addEventListener('donationreceipts:replies-changed', refreshOpenReplies)
+})
+onBeforeUnmount(() => {
+	clearInterval(timer)
+	window.removeEventListener('donationreceipts:replies-changed', refreshOpenReplies)
+})
+watch(() => route.path, refreshOpenReplies)
 </script>

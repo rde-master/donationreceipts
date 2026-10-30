@@ -72,11 +72,23 @@ class SettingsService {
         'confirm_body' => ['type' => 'string', 'default' => SponsorTemplate::DEFAULT_CONFIRM_BODY],
         // Ablage der hochgeladenen Logos (Nextcloud file ID, set via StorageService); 0 = no upload
         'folder_logos_id' => ['type' => 'int', 'default' => 0],
+        // Info-Mail an die Gruppenmitglieder bei Rückmeldungen und Antworten
+        'notify_group_mail' => ['type' => 'bool', 'default' => true],
+
+        // Antworten auf Anschreiben per IMAP abholen (Passwort separat, verschlüsselt)
+        'sponsor_imap_enabled' => ['type' => 'bool', 'default' => false],
+        'sponsor_imap_host' => ['type' => 'string', 'default' => ''],
+        'sponsor_imap_port' => ['type' => 'int', 'default' => 993],
+        'sponsor_imap_security' => ['type' => 'string', 'default' => self::SMTP_SSL],
+        // leer = Benutzer des SMTP-Zugangs
+        'sponsor_imap_user' => ['type' => 'string', 'default' => ''],
+        'sponsor_imap_folder' => ['type' => 'string', 'default' => 'INBOX'],
     ];
 
     public const SMTP_STARTTLS = 'starttls';
     public const SMTP_SSL = 'ssl';
     private const SMTP_PASSWORD_KEY = 'smtp_password';
+    private const IMAP_PASSWORD_KEY = 'sponsor_imap_password';
 
     /** The two SMTP accounts, as prefix of their setting keys. */
     public const ACCOUNT_RECEIPTS = '';
@@ -108,6 +120,48 @@ class SettingsService {
 
     public function hasSmtpPassword(string $account = self::ACCOUNT_RECEIPTS): bool {
         return $this->appConfig->getValueString(Application::APP_ID, $account . self::SMTP_PASSWORD_KEY, '') !== '';
+    }
+
+    public function setImapPassword(string $password): void {
+        $this->appConfig->setValueString(Application::APP_ID, self::IMAP_PASSWORD_KEY, $password === '' ? '' : $this->crypto->encrypt($password), sensitive: true);
+    }
+
+    public function hasImapPassword(): bool {
+        return $this->appConfig->getValueString(Application::APP_ID, self::IMAP_PASSWORD_KEY, '') !== '';
+    }
+
+    /**
+     * Login for the mailbox of the sponsor account; user and password
+     * fall back to the SMTP account's.
+     *
+     * @return array{host: string, port: int, ssl: bool, user: string, password: string, folder: string}
+     */
+    public function imapAccount(): array {
+        $stored = $this->appConfig->getValueString(Application::APP_ID, self::IMAP_PASSWORD_KEY, '');
+        $user = $this->getString('sponsor_imap_user');
+        return [
+            'host' => $this->getString('sponsor_imap_host'),
+            'port' => (int)$this->get('sponsor_imap_port'),
+            'ssl' => $this->get('sponsor_imap_security') === self::SMTP_SSL,
+            'user' => $user !== '' ? $user : $this->getString(self::ACCOUNT_SPONSORS . 'smtp_user'),
+            'password' => $stored !== '' ? $this->crypto->decrypt($stored) : $this->getSmtpPassword(self::ACCOUNT_SPONSORS),
+            'folder' => $this->getString('sponsor_imap_folder') !== '' ? $this->getString('sponsor_imap_folder') : 'INBOX',
+        ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function missingForImap(): array {
+        $account = $this->imapAccount();
+        $missing = [];
+        if ($account['host'] === '') {
+            $missing[] = 'IMAP-Server';
+        }
+        if ($account['user'] === '' || $account['password'] === '') {
+            $missing[] = 'IMAP-Benutzer und -Passwort';
+        }
+        return $missing;
     }
 
     /**
@@ -228,6 +282,9 @@ class SettingsService {
             if (self::smtpKey($key) === 'smtp_port' && ($value < 1 || $value > 65535)) {
                 throw new ValidationException('Ungültiger SMTP-Port');
             }
+            if ($key === 'sponsor_imap_port' && ($value < 1 || $value > 65535)) {
+                throw new ValidationException('Ungültiger IMAP-Port');
+            }
             return $value;
         }
         if (!is_string($value)) {
@@ -240,7 +297,7 @@ class SettingsService {
         if ($key === 'tax_mode' && !in_array($value, [self::TAX_MODE_EXEMPTION, self::TAX_MODE_STATUTE], true)) {
             throw new ValidationException('Ungültige Art der Steuerbegünstigung');
         }
-        if (self::smtpKey($key) === 'smtp_security' && !in_array($value, [self::SMTP_STARTTLS, self::SMTP_SSL], true)) {
+        if ((self::smtpKey($key) === 'smtp_security' || $key === 'sponsor_imap_security') && !in_array($value, [self::SMTP_STARTTLS, self::SMTP_SSL], true)) {
             throw new ValidationException('Ungültige Verschlüsselung');
         }
         if (self::smtpKey($key) === 'smtp_from_email' && $value !== '' && filter_var($value, FILTER_VALIDATE_EMAIL) === false) {

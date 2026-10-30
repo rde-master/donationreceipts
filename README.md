@@ -36,8 +36,8 @@ Der vollständige Plan steht in [docs/plan.md](docs/plan.md), die Änderungen je
   herunterladen kann. Der Link wird beim ersten Gebrauch als Nextcloud-Freigabe angelegt und
   danach wiederverwendet; die Fassungen ohne Unterschrift werden nie freigegeben.
 - **Sponsoren anschreiben**:
-  - **Sponsoren**: eigene Liste mit Name, Ansprechpartner, Briefanrede und E-Mail; bestehende
-    Spender lassen sich übernehmen und bleiben mit ihnen verknüpft.
+  - **Mögliche Sponsoren**: eigene Liste mit Name, Ansprechpartner, Briefanrede und E-Mail;
+    bestehende Spender lassen sich übernehmen und bleiben mit ihnen verknüpft.
   - **Vorlagen**: beliebig viele Anschreiben-Vorlagen mit Platzhaltern (`{anrede}`, `{name}`,
     `{ansprechpartner}`, `{aktion}`, `{link}`, `{verein}`).
   - **Aktionen** (z. B. „Sommerfest 2027“): Sponsoren auswählen, Vorlage wählen, Vorschau, dann
@@ -47,8 +47,13 @@ Der vollständige Plan steht in [docs/plan.md](docs/plan.md), die Änderungen je
     Anschrift für die Bescheinigung, Geld- oder Sachspende, Freikarten (2 / 1 / nein / melde mich
     noch), Zustimmung zur öffentlichen Nennung (Logo auf Plakaten) mit optionalem Logo-Upload und
     ein Hinweisfeld. Änderbar über denselben Link, bis die Spende eingegangen ist.
-  - Nach einer Rückmeldung: Benachrichtigung an alle Gruppenmitglieder und Bestätigungsmail an
-    den Sponsor (eigene Vorlage, `{angaben}` fasst die Rückmeldung zusammen).
+  - Nach einer Rückmeldung: Benachrichtigung (Glocke und, abschaltbar, E-Mail) an alle
+    Gruppenmitglieder und Bestätigungsmail an den Sponsor (eigene Vorlage, `{angaben}` fasst die
+    Rückmeldung zusammen).
+  - **Rückmeldungen**: Liste aller Rückmeldungen mit Filter und CSV-Export; Rückmeldungen lassen
+    sich auch manuell erfassen und bearbeiten.
+  - **Antworten**: Antwort-Mails auf Anschreiben werden per IMAP aus dem Postfach geholt (alle
+    10 Minuten, nur lesend) und als Aufgabe angezeigt, bis jemand sie als erledigt markiert.
   - **Spende eingegangen**: In der Aktion oder unter „Bescheinigungen“ bestätigt ein
     Gruppenmitglied Eingangsdatum und Betrag. Dann wird der Spender angelegt bzw. aktualisiert,
     die Bescheinigung mit Nummer und PDFs erzeugt und sofort per E-Mail versendet.
@@ -85,7 +90,8 @@ php occ app:enable donationreceipts
    - die beiden Hauptordner (alle Gruppenmitglieder brauchen dort Schreibrecht, z. B. über
      einen Team-Ordner der Gruppe)
    - SMTP-Zugang und E-Mail-Vorlage, dann „Testmail senden“
-   - für Sponsoren-Anschreiben: zweiter SMTP-Zugang, Text des Rückmeldeformulars,
+   - für Sponsoren-Anschreiben: zweiter SMTP-Zugang, optional IMAP-Zugang desselben Postfachs
+     für die Antworten (braucht den Nextcloud-Cron für Hintergrundjobs), Text des Rückmeldeformulars,
      Bestätigungsmail und optional ein Logo-Ordner (Logos landen in den Dateien des Mitglieds,
      das das Anschreiben verschickt hat; es braucht dort Schreibrecht)
 

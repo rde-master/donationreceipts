@@ -58,6 +58,8 @@ use OCP\AppFramework\Db\Entity;
  * @method void setLogoFileId(?int $id)
  * @method string|null getRemarks()
  * @method void setRemarks(?string $remarks)
+ * @method string|null getResponseBy()
+ * @method void setResponseBy(?string $uid)
  * @method int|null getReceiptId()
  * @method void setReceiptId(?int $id)
  * @method string getCreatedBy()
@@ -98,6 +100,7 @@ class Inquiry extends Entity implements JsonSerializable {
     protected $publish;
     protected $logoFileId;
     protected $remarks;
+    protected $responseBy;
     protected $receiptId;
     protected $createdBy;
     protected $createdAt;
@@ -177,6 +180,8 @@ class Inquiry extends Entity implements JsonSerializable {
             'sentTo' => $this->sentTo,
             'respondedAt' => $this->respondedAt,
             'response' => $this->hasResponse() ? $this->responseData() + ['displayName' => $this->getDisplayName()] : null,
+            // who entered the response in the app (null = the sponsor via the form)
+            'responseBy' => $this->responseBy,
             'hasLogo' => $this->logoFileId !== null,
             'receiptId' => $this->receiptId,
             'createdAt' => $this->createdAt,

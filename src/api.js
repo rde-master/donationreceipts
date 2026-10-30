@@ -193,3 +193,31 @@ export async function uploadMailImage(file) {
 	const { id } = (await axios.post(base('/mail-images'), data)).data
 	return base(`/mail-images/${id}`)
 }
+
+export async function listResponses(params = {}) {
+	return (await axios.get(base('/inquiries/responses'), { params })).data
+}
+
+export async function saveManualResponse(campaignId, sponsorId, response, sendConfirmation) {
+	return (await axios.put(base(`/campaigns/${campaignId}/sponsors/${sponsorId}/response`), { response, sendConfirmation })).data
+}
+
+export async function listReplies(params = {}) {
+	return (await axios.get(base('/replies'), { params })).data
+}
+
+export async function countOpenReplies() {
+	return (await axios.get(base('/replies/count'))).data.open
+}
+
+export async function updateReply(id, status, note) {
+	return (await axios.put(base(`/replies/${id}`), { status, note })).data
+}
+
+export async function fetchReplies() {
+	return (await axios.post(base('/replies/fetch'))).data
+}
+
+export async function testImap() {
+	return (await axios.post(base('/replies/test'))).data
+}

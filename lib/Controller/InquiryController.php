@@ -61,6 +61,29 @@ class InquiryController extends Controller {
     }
 
     /**
+     * All responses (optionally of one campaign) for the list and the export.
+     */
+    #[NoAdminRequired]
+    public function responses(?int $campaignId = null): JSONResponse {
+        $names = [];
+        foreach ($this->campaigns->list() as $campaign) {
+            $names[$campaign->getId()] = $campaign->getName();
+        }
+        $sponsors = [];
+        foreach ($this->sponsors->search() as $sponsor) {
+            $sponsors[$sponsor->getId()] = $sponsor;
+        }
+        return new JSONResponse([
+            'inquiries' => array_map(static fn (Inquiry $inquiry): array => $inquiry->jsonSerialize() + [
+                'sponsor' => $sponsors[$inquiry->getSponsorId()] ?? null,
+                'campaignName' => $names[$inquiry->getCampaignId()] ?? '',
+            ], $this->inquiries->responses($campaignId)),
+            'campaigns' => $this->campaigns->list(),
+            'ticketLabels' => SponsorTemplate::TICKET_LABELS,
+        ]);
+    }
+
+    /**
      * The donation has arrived: create the receipt and mail it.
      *
      * @param array<string, mixed> $receipt receipt fields plus donorId and updateDonor

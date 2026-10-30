@@ -4,6 +4,27 @@ Alle Änderungen der App, neueste zuerst. Versionen nach [SemVer](https://semver
 Fehlerbehebung erhöht die dritte Stelle, neue Funktionen die zweite, mit der Abnahme kommt 1.0.0.
 Jede Version hat einen Git-Tag `v<version>`.
 
+## 0.10.0 – 2026-10-31
+
+- „Sponsoren“ heißen jetzt **„Mögliche Sponsoren“**.
+- Neue Seite **Rückmeldungen**: alle Rückmeldungen über alle Aktionen, Filter nach Aktion und
+  Status (Spende offen / eingegangen), Summe und Freikarten, **Export als CSV** (Excel-tauglich,
+  mit Anschrift, Freikarten, Logo-Freigabe und Hinweis).
+- Rückmeldungen lassen sich **manuell erfassen und bearbeiten** (z. B. nach einem Telefonat),
+  auch ohne vorheriges Anschreiben und in geschlossenen Aktionen; wahlweise mit
+  Bestätigungsmail an den Sponsor. Sie sind als „manuell erfasst“ gekennzeichnet.
+- **Antworten auf Anschreiben**: Die App liest alle 10 Minuten das Postfach der Anschreiben
+  (IMAP, nur lesend, nur verschlüsselt) und übernimmt Antworten auf Anschreiben (erkannt an der
+  Message-ID) und Mails von Adressen möglicher Sponsoren. Jede ist eine **Aufgabe** auf der neuen
+  Seite **Antworten** („zu bearbeiten“ → „erledigt“, mit Notiz und Name), mit Zähler in der
+  Navigation und Hinweis in der Aktion. Abwesenheitsnotizen werden ohne Aufgabe abgelegt.
+  „Jetzt abrufen“ und „Verbindung testen“ für den Abruf von Hand.
+- **Info an die Gruppe** bei jeder Rückmeldung über das Formular und jeder neuen Antwort-Mail:
+  Nextcloud-Benachrichtigung und (abschaltbar) eine E-Mail an alle Gruppenmitglieder.
+- Behoben: Der Texteditor der Mail-Vorlagen war nur eine schmale Spalte – Nextcloud gibt
+  bearbeitbaren Feldern global eine feste Breite.
+- Neue Datenbanktabelle `dr_replies`, neue Spalte `dr_inquiries.response_by` (`occ upgrade`).
+
 ## 0.9.0 – 2026-10-30
 
 - **HTML-Mails** für die Bescheinigungs-Mail, die Sponsoren-Anschreiben und die

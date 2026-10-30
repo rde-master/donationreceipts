@@ -1,7 +1,7 @@
 <template>
 	<div class="dr-page">
 		<div class="dr-header">
-			<h2>{{ id ? 'Sponsor bearbeiten' : 'Neuer Sponsor' }}</h2>
+			<h2>{{ id ? 'Möglichen Sponsor bearbeiten' : 'Neuer möglicher Sponsor' }}</h2>
 			<NcButton v-if="id && !loading" variant="error" @click="confirmDelete = true">
 				<template #icon>
 					<NcIconSvgWrapper :path="mdiDelete" />
@@ -44,7 +44,7 @@
 		</form>
 
 		<NcDialog v-if="confirmDelete"
-			name="Sponsor löschen?"
+			name="Eintrag löschen?"
 			:message="`${sponsor.name} wird endgültig gelöscht.`"
 			:buttons="deleteButtons"
 			@closing="confirmDelete = false" />
@@ -117,7 +117,7 @@ async function save() {
 		} else {
 			await createSponsor(data)
 		}
-		showSuccess('Sponsor gespeichert')
+		showSuccess('Gespeichert')
 		router.push({ name: 'sponsors' })
 	} catch (e) {
 		showError(errorMessage(e))
@@ -129,7 +129,7 @@ async function save() {
 async function remove() {
 	try {
 		await deleteSponsor(props.id)
-		showSuccess('Sponsor gelöscht')
+		showSuccess('Gelöscht')
 		router.push({ name: 'sponsors' })
 	} catch (e) {
 		showError(errorMessage(e))

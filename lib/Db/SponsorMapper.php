@@ -62,4 +62,17 @@ class SponsorMapper extends QBMapper {
             ->where($qb->expr()->eq('donor_id', $qb->createNamedParameter($donorId, IQueryBuilder::PARAM_INT)));
         return $this->findEntities($qb);
     }
+
+    /**
+     * Sponsors with this e-mail address (case-insensitive).
+     *
+     * @return list<Sponsor>
+     */
+    public function findByEmail(string $email): array {
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('*')
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq($qb->func()->lower('email'), $qb->createNamedParameter(mb_strtolower(trim($email)))));
+        return $this->findEntities($qb);
+    }
 }
