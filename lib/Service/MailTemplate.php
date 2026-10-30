@@ -8,7 +8,8 @@ use OCA\DonationReceipts\Db\Donor;
 use OCA\DonationReceipts\Db\Receipt;
 
 /**
- * Subject and text of the receipt mail with placeholders like {name}.
+ * Placeholders like {name} of the receipt mail. render() fills plain text
+ * (subjects); HTML bodies go through MailHtml::render().
  */
 class MailTemplate {
     public const DEFAULT_SUBJECT = 'Zuwendungsbestätigung {nummer}';
@@ -26,6 +27,7 @@ class MailTemplate {
         'art' => 'Geldzuwendung / Sachzuwendung',
         'verein' => 'Name des Vereins',
         'ordnerlink' => 'Link zum Ordner mit allen unterschriebenen Bescheinigungen des Spenders (zum erneuten Herunterladen)',
+        'ordnerknopf' => 'derselbe Link als Knopf',
     ];
 
     /** Only replaced if used: creates a public link share on first use (see FolderShareService). */

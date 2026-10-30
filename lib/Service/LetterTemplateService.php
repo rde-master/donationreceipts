@@ -7,6 +7,7 @@ namespace OCA\DonationReceipts\Service;
 use OCA\DonationReceipts\Db\LetterTemplate;
 use OCA\DonationReceipts\Db\LetterTemplateMapper;
 use OCA\DonationReceipts\Exception\ValidationException;
+use OCA\DonationReceipts\Mail\MailHtml;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Utility\ITimeFactory;
 
@@ -74,6 +75,6 @@ class LetterTemplateService {
         }
         $template->setName($name);
         $template->setSubject($subject);
-        $template->setBody($body);
+        $template->setBody(MailHtml::sanitize($body));
     }
 }

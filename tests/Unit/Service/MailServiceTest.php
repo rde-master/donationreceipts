@@ -20,17 +20,13 @@ use PHPUnit\Framework\TestCase;
 
 class MailServiceTest extends TestCase {
     private FolderShareService&MockObject $folderShares;
-    private string $body = '';
+    private MailService $service;
 
-    private function service(): MailService {
+    protected function setUp(): void {
         $settings = $this->createMock(SettingsService::class);
-        $settings->method('getString')->willReturnCallback(fn (string $key): string => match ($key) {
-            'mail_subject' => 'Bescheinigung {nummer}',
-            'mail_body' => $this->body,
-            default => 'Verein',
-        });
+        $settings->method('getString')->willReturn('Verein');
         $this->folderShares = $this->createMock(FolderShareService::class);
-        return new MailService($settings, $this->createMock(StorageService::class), $this->createMock(DonorMapper::class),
+        $this->service = new MailService($settings, $this->createMock(StorageService::class), $this->createMock(DonorMapper::class),
             $this->createMock(ReceiptMapper::class), $this->createMock(IMailer::class), $this->createMock(ITimeFactory::class),
             $this->createMock(SmtpSender::class), $this->folderShares);
     }
@@ -45,18 +41,21 @@ class MailServiceTest extends TestCase {
     }
 
     public function testFolderLinkOnlyWhenUsed(): void {
-        $this->body = 'Danke';
-        $service = $this->service();
         $this->folderShares->expects($this->never())->method('link');
-        $this->assertSame('Danke', $service->render($this->receipt(), new Donor())['body']);
+        $mail = $this->service->render($this->receipt(), new Donor(), 'Bescheinigung {nummer}', '<p>Danke, {verein}</p>');
+        $this->assertSame('Bescheinigung 2026-0001', $mail['subject']);
+        $this->assertSame('<p>Danke, Verein</p>', $mail['html']);
     }
 
-    public function testFolderLinkIsInserted(): void {
-        $this->body = "Alle Bescheinigungen: {ordnerlink}";
-        $service = $this->service();
+    public function testFolderLinkAndButtonAreInserted(): void {
         $this->folderShares->expects($this->once())->method('link')->willReturn('https://cloud.example.org/s/abc');
-        $mail = $service->render($this->receipt(), new Donor());
-        $this->assertSame('Bescheinigung 2026-0001', $mail['subject']);
-        $this->assertSame('Alle Bescheinigungen: https://cloud.example.org/s/abc', $mail['body']);
+        $mail = $this->service->render($this->receipt(), new Donor(), 'S', '<p>Alle Bescheinigungen: {ordnerlink}</p><p>{ordnerknopf}</p>');
+        $this->assertStringContainsString('<a href="https://cloud.example.org/s/abc">https://cloud.example.org/s/abc</a>', $mail['html']);
+        $this->assertStringContainsString('Zu Ihren Zuwendungsbestätigungen</a>', $mail['html']);
+    }
+
+    public function testTemplateIsSanitizedBeforeRendering(): void {
+        $mail = $this->service->render($this->receipt(), new Donor(), 'S', '<p onclick="x()">Hallo<script>alert(1)</script></p>');
+        $this->assertSame('<p>Hallo</p>', $mail['html']);
     }
 }

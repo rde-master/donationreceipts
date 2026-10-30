@@ -178,3 +178,18 @@ export async function receiveDonation(inquiryId, receipt) {
 export function logoUrl(inquiryId) {
 	return base(`/inquiries/${inquiryId}/logo`)
 }
+
+export async function renderReceiptMail(id, mail) {
+	return (await axios.post(base(`/receipts/${id}/mail/preview`), mail)).data
+}
+
+/**
+ * @param {File} file image for a mail template
+ * @return {Promise<string>} URL to use as src in the template
+ */
+export async function uploadMailImage(file) {
+	const data = new FormData()
+	data.append('image', file)
+	const { id } = (await axios.post(base('/mail-images'), data)).data
+	return base(`/mail-images/${id}`)
+}

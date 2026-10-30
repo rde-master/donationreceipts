@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\DonationReceipts\Controller;
 
 use OCA\DonationReceipts\Exception\ValidationException;
+use OCA\DonationReceipts\Mail\MailHtml;
 use OCA\DonationReceipts\Service\LetterTemplateService;
 use OCA\DonationReceipts\Service\SponsorTemplate;
 use OCP\AppFramework\Controller;
@@ -31,7 +32,7 @@ class LetterTemplateController extends Controller {
         return new JSONResponse([
             'templates' => $this->templates->list(),
             'placeholders' => SponsorTemplate::PLACEHOLDERS,
-            'defaults' => ['subject' => SponsorTemplate::DEFAULT_LETTER_SUBJECT, 'body' => SponsorTemplate::DEFAULT_LETTER_BODY],
+            'defaults' => ['subject' => SponsorTemplate::DEFAULT_LETTER_SUBJECT, 'body' => MailHtml::fromStored(SponsorTemplate::DEFAULT_LETTER_BODY)],
         ]);
     }
 

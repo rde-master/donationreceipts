@@ -174,7 +174,8 @@ class InquiryServiceTest extends TestCase {
         $this->sender->expects($this->once())->method('sendEach')
             ->with(SettingsService::ACCOUNT_SPONSORS, $this->callback(static fn (array $emails): bool => array_keys($emails) === [9]
                 && $emails[9]->getSubject() === 'Sommerfest 2027'
-                && $emails[9]->getTextBody() === 'Sehr geehrte Damen und Herren|https://cloud.example.org/r/NEWTOKEN000000000000000000000000'))
+                && $emails[9]->getTextBody() === 'Sehr geehrte Damen und Herren|<a href="https://cloud.example.org/r/NEWTOKEN000000000000000000000000">'
+                    . 'https://cloud.example.org/r/NEWTOKEN000000000000000000000000</a>'))
             ->willReturn([9 => null]);
 
         $results = $this->service->sendLetters(3, [9, 9], '{aktion}', '{anrede}|{link}', 'kasse');
@@ -214,7 +215,7 @@ class InquiryServiceTest extends TestCase {
         $receipt = new Receipt();
         $receipt->setId(77);
         $this->receiptService->expects($this->once())->method('create')->with(12, $this->anything(), 'kasse')->willReturn($receipt);
-        $this->mailService->method('render')->willReturn(['subject' => 'S', 'body' => 'B']);
+        $this->mailService->method('templates')->willReturn(['subject' => 'S', 'body' => 'B']);
         $this->mailService->expects($this->once())->method('sendReceipt')->with($receipt, 'korn@example.org', 'S', 'B')->willReturn($receipt);
 
         $result = $this->service->receive(5, ['donorId' => null, 'type' => 'money'], 'kasse');
@@ -231,7 +232,7 @@ class InquiryServiceTest extends TestCase {
         $receipt = new Receipt();
         $receipt->setId(77);
         $this->receiptService->method('create')->willReturn($receipt);
-        $this->mailService->method('render')->willReturn(['subject' => 'S', 'body' => 'B']);
+        $this->mailService->method('templates')->willReturn(['subject' => 'S', 'body' => 'B']);
         $this->mailService->method('sendReceipt')->willThrowException(new ValidationException('Versand fehlgeschlagen: timeout'));
 
         $result = $this->service->receive(5, ['donorId' => null], 'kasse');

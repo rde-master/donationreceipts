@@ -15,6 +15,7 @@ use OCA\DonationReceipts\Db\Receipt;
 use OCA\DonationReceipts\Db\Sponsor;
 use OCA\DonationReceipts\Db\SponsorMapper;
 use OCA\DonationReceipts\Exception\ValidationException;
+use OCA\DonationReceipts\Mail\MailHtml;
 use OCA\DonationReceipts\Mail\SmtpSender;
 use OCA\DonationReceipts\Notification\Notifier;
 use OCP\AppFramework\Db\DoesNotExistException;
@@ -147,7 +148,7 @@ class InquiryService {
      * The letter as one sponsor would get it. Before the first sending there
      * is no link yet; a placeholder text stands in for it.
      *
-     * @return array{to: string, subject: string, body: string}
+     * @return array{to: string, subject: string, html: string} html: complete document
      * @throws DoesNotExistException
      */
     public function preview(int $campaignId, int $sponsorId, string $subject, string $body): array {
@@ -159,7 +160,7 @@ class InquiryService {
         return [
             'to' => $sponsor->getEmail(),
             'subject' => MailTemplate::render($subject, $values),
-            'body' => MailTemplate::render($body, $values),
+            'html' => MailHtml::document(MailHtml::render(MailHtml::sanitize($body), $values)),
         ];
     }
 
@@ -193,6 +194,7 @@ class InquiryService {
         }
 
         $orgName = $this->settings->getString('org_name');
+        $body = MailHtml::sanitize($body);
         $emails = [];
         $targets = [];
         foreach ($sponsorIds as $sponsorId) {
@@ -204,7 +206,7 @@ class InquiryService {
             $inquiry = $this->inquiries->findByCampaignAndSponsor($campaignId, $sponsorId) ?? $this->createInquiry($campaign, $sponsor, $uid);
             $values = SponsorTemplate::values($sponsor, $campaign, $this->link($inquiry), $orgName);
             $emails[$sponsorId] = $this->sender->newEmail(SettingsService::ACCOUNT_SPONSORS, $sponsor->getEmail(),
-                MailTemplate::render($subject, $values), MailTemplate::render($body, $values));
+                MailTemplate::render($subject, $values), MailHtml::render($body, $values));
             $targets[$sponsorId] = [$sponsor, $inquiry];
         }
 
@@ -339,8 +341,8 @@ class InquiryService {
         $mailError = null;
         try {
             $to = trim((string)$donor->getEmail()) !== '' ? (string)$donor->getEmail() : $sponsor->getEmail();
-            $mail = $this->mailService->render($receipt, $donor);
-            $receipt = $this->mailService->sendReceipt($receipt, $to, $mail['subject'], $mail['body']);
+            $template = $this->mailService->templates();
+            $receipt = $this->mailService->sendReceipt($receipt, $to, $template['subject'], $template['body']);
         } catch (ValidationException $e) {
             $mailError = $e->getMessage();
         }
@@ -579,7 +581,7 @@ class InquiryService {
                 SettingsService::ACCOUNT_SPONSORS,
                 $sponsor->getEmail(),
                 MailTemplate::render($this->settings->getString('confirm_subject'), $values),
-                MailTemplate::render($this->settings->getString('confirm_body'), $values),
+                MailHtml::render(MailHtml::sanitize($this->settings->getString('confirm_body')), $values),
             ));
         } catch (ValidationException $e) {
             $this->logger->warning('Sending sponsor confirmation failed: ' . $e->getMessage());

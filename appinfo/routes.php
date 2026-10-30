@@ -29,6 +29,9 @@ return [
 
         ['name' => 'mail#preview', 'url' => '/api/receipts/{id}/mail', 'verb' => 'GET', 'requirements' => ['id' => '\d+']],
         ['name' => 'mail#send', 'url' => '/api/receipts/{id}/mail', 'verb' => 'POST', 'requirements' => ['id' => '\d+']],
+        ['name' => 'mail#render', 'url' => '/api/receipts/{id}/mail/preview', 'verb' => 'POST', 'requirements' => ['id' => '\d+']],
+        ['name' => 'mailImage#upload', 'url' => '/api/mail-images', 'verb' => 'POST'],
+        ['name' => 'mailImage#show', 'url' => '/api/mail-images/{id}', 'verb' => 'GET', 'requirements' => ['id' => '[a-f0-9]{32}']],
         ['name' => 'mail#test', 'url' => '/api/mail/test', 'verb' => 'POST'],
 
         ['name' => 'sponsor#index', 'url' => '/api/sponsors', 'verb' => 'GET'],

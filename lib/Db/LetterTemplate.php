@@ -5,10 +5,11 @@ declare(strict_types=1);
 namespace OCA\DonationReceipts\Db;
 
 use JsonSerializable;
+use OCA\DonationReceipts\Mail\MailHtml;
 use OCP\AppFramework\Db\Entity;
 
 /**
- * Template of a letter to sponsors (subject and text with placeholders).
+ * Template of a letter to sponsors (subject and HTML text with placeholders).
  *
  * @method string getName()
  * @method void setName(string $name)
@@ -39,7 +40,7 @@ class LetterTemplate extends Entity implements JsonSerializable {
             'id' => $this->id,
             'name' => $this->name,
             'subject' => $this->subject,
-            'body' => $this->body ?? '',
+            'body' => MailHtml::fromStored($this->body ?? ''),
             'createdAt' => $this->createdAt,
             'updatedAt' => $this->updatedAt,
         ];

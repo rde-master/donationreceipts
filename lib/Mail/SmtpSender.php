@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\DonationReceipts\Mail;
 
 use OCA\DonationReceipts\Exception\ValidationException;
+use OCA\DonationReceipts\Service\MailImageStore;
 use OCA\DonationReceipts\Service\SettingsService;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
@@ -19,25 +20,45 @@ use Symfony\Component\Mime\Email;
 class SmtpSender {
     public function __construct(
         private SettingsService $settings,
+        private MailImageStore $images,
         private LoggerInterface $logger,
     ) {
     }
 
     /**
-     * A plain-text mail with the account's sender address.
+     * A mail with the account's sender address: HTML (rendered body
+     * fragment, see MailHtml) plus the plain-text alternative. Uploaded
+     * images are embedded.
      *
      * @throws ValidationException account not configured
      */
-    public function newEmail(string $account, string $to, string $subject, string $body): Email {
+    public function newEmail(string $account, string $to, string $subject, string $html): Email {
         $missing = $this->settings->missingForMail($account);
         if ($missing !== []) {
             throw new ValidationException('Bitte zuerst die E-Mail-Einstellungen vervollständigen: ' . implode(', ', $missing));
         }
-        return (new Email())
+        $email = (new Email())
             ->from(new Address($this->settings->getString($account . 'smtp_from_email'), $this->settings->getString($account . 'smtp_from_name')))
             ->to($to)
             ->subject(trim($subject))
-            ->text($body);
+            ->text(MailHtml::toText($html));
+        $embedded = [];
+        $html = preg_replace_callback('/<img src="([^"]*)"/', function (array $m) use ($email, &$embedded): string {
+            if (preg_match(MailHtml::IMAGE_PATTERN, $m[1], $id) !== 1) {
+                return $m[0];
+            }
+            $name = 'bild-' . $id[1];
+            if (!isset($embedded[$name])) {
+                $image = $this->images->get($id[1]);
+                if ($image === null) {
+                    return '<img src=""';
+                }
+                $email->embed($image['content'], $name, $image['mime']);
+                $embedded[$name] = true;
+            }
+            return '<img src="cid:' . $name . '"';
+        }, $html) ?? $html;
+        return $email->html(MailHtml::document($html));
     }
 
     /**

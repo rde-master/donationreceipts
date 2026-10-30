@@ -4,6 +4,25 @@ Alle Änderungen der App, neueste zuerst. Versionen nach [SemVer](https://semver
 Fehlerbehebung erhöht die dritte Stelle, neue Funktionen die zweite, mit der Abnahme kommt 1.0.0.
 Jede Version hat einen Git-Tag `v<version>`.
 
+## 0.9.0 – 2026-10-30
+
+- **HTML-Mails** für die Bescheinigungs-Mail, die Sponsoren-Anschreiben und die
+  Bestätigungsmail an Sponsoren, jeweils mit automatisch erzeugter Textfassung als Fallback
+  (multipart/alternative).
+- **WYSIWYG-Editor** (Tiptap) in den Einstellungen, bei den Vorlagen und in beiden
+  Senden-Dialogen: fett, kursiv, unterstrichen, Überschriften, Listen, Zitat, Ausrichtung,
+  Links, Rückgängig, Platzhalter-Menü.
+- **Bilder** (PNG, JPG, GIF bis 5 MB) lassen sich in die Vorlagen einfügen; sie liegen im
+  geschützten Datenbereich der App und werden beim Versand in die Mail eingebettet.
+- Neue Platzhalter `{linkknopf}` und `{ordnerknopf}`: der Link als Knopf. `{link}` und
+  `{ordnerlink}` werden in HTML zu klickbaren Links und lassen sich auch als Linkziel
+  verwenden (Text markieren → Link → `{link}`).
+- Vorschau als gerenderte HTML-Mail. Der Senden-Dialog der Bescheinigung bearbeitet jetzt
+  die Vorlage mit Platzhaltern; gefüllt wird sie beim Senden.
+- Das HTML wird beim Speichern und beim Senden serverseitig auf die Elemente des Editors
+  beschränkt (keine Skripte, keine fremden Bilder, nur http(s)-/mailto-Links).
+- Bestehende Text-Vorlagen werden beim Laden automatisch in HTML umgewandelt.
+
 ## 0.8.0 – 2026-10-30
 
 - Neu: **Sponsoren anschreiben** (Navigation „Aktionen“, „Sponsoren“, „Vorlagen“).

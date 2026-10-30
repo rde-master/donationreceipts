@@ -6,6 +6,7 @@ namespace OCA\DonationReceipts\Service;
 
 use OCA\DonationReceipts\AppInfo\Application;
 use OCA\DonationReceipts\Exception\ValidationException;
+use OCA\DonationReceipts\Mail\MailHtml;
 use OCP\IAppConfig;
 use OCP\Security\ICrypto;
 
@@ -84,6 +85,9 @@ class SettingsService {
 
     private const DATE_KEYS = ['exemption_date', 'statute_date'];
 
+    /** Mail texts edited in the HTML editor (older plain-text values are converted on read). */
+    private const HTML_KEYS = ['mail_body', 'confirm_body'];
+
     /** Only set through their own services (with access checks), never from the settings form. */
     private const INTERNAL_KEYS = ['folder_unsigned_id', 'folder_signed_id', 'folder_logos_id'];
 
@@ -135,11 +139,12 @@ class SettingsService {
 
     public function get(string $key): string|bool|int {
         $def = self::SCHEMA[$key] ?? throw new \InvalidArgumentException('Unknown setting ' . $key);
-        return match ($def['type']) {
+        $value = match ($def['type']) {
             'bool' => $this->appConfig->getValueBool(Application::APP_ID, $key, $def['default']),
             'int' => $this->appConfig->getValueInt(Application::APP_ID, $key, $def['default']),
             default => $this->appConfig->getValueString(Application::APP_ID, $key, $def['default']),
         };
+        return in_array($key, self::HTML_KEYS, true) ? MailHtml::fromStored((string)$value) : $value;
     }
 
     public function getString(string $key): string {
@@ -227,6 +232,9 @@ class SettingsService {
         }
         if (!is_string($value)) {
             throw new ValidationException('Ungültiger Wert für ' . $key);
+        }
+        if (in_array($key, self::HTML_KEYS, true)) {
+            return MailHtml::sanitize($value);
         }
         $value = trim($value);
         if ($key === 'tax_mode' && !in_array($value, [self::TAX_MODE_EXEMPTION, self::TAX_MODE_STATUTE], true)) {

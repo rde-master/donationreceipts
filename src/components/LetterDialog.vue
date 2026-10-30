@@ -34,16 +34,7 @@
 				:label-outside="false"
 				@update:model-value="applyTemplate" />
 			<NcTextField v-model="subject" label="Betreff" required />
-			<NcTextArea v-model="body"
-				label="Text"
-				resize="vertical"
-				rows="10" />
-			<p class="dr-muted">
-				Platzhalter:
-				<span v-for="(label, key) in placeholders" :key="key" class="dr-placeholder">
-					<code>{{ '{' + key + '}' }}</code> {{ label }}
-				</span>
-			</p>
+			<HtmlEditor v-model="body" label="Text" :placeholders="placeholders" />
 
 			<h3>Vorschau</h3>
 			<NcSelect v-if="sponsors.length > 1"
@@ -53,13 +44,10 @@
 				input-label="Vorschau für"
 				:clearable="false"
 				:label-outside="false" />
-			<div v-if="preview" class="dr-preview">
-				<div><span class="dr-muted">An:</span> {{ preview.to }}</div>
-				<div><span class="dr-muted">Betreff:</span> {{ preview.subject }}</div>
-				<div class="dr-pre dr-preview__body">
-					{{ preview.body }}
-				</div>
-			</div>
+			<MailPreview v-if="preview"
+				:to="preview.to"
+				:subject="preview.subject"
+				:html="preview.html" />
 			<NcNoteCard v-if="error" type="error">
 				{{ error }}
 			</NcNoteCard>
@@ -92,10 +80,13 @@ import NcIconSvgWrapper from '@nextcloud/vue/components/NcIconSvgWrapper'
 import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
 import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
 import NcSelect from '@nextcloud/vue/components/NcSelect'
-import NcTextArea from '@nextcloud/vue/components/NcTextArea'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue'
 import { errorMessage, listLetterTemplates, previewLetter, sendLetters } from '../api.js'
+import MailPreview from './MailPreview.vue'
+
+// Tiptap is large: only loaded where a mail text is edited
+const HtmlEditor = defineAsyncComponent(() => import('./HtmlEditor.vue'))
 
 const props = defineProps({
 	campaign: { type: Object, required: true },
@@ -186,23 +177,6 @@ async function send() {
 	gap: calc(var(--default-grid-baseline) * 2);
 }
 
-.dr-placeholder {
-	display: inline-block;
-	margin-inline-end: calc(var(--default-grid-baseline) * 3);
-}
-
-.dr-preview {
-	border: 1px solid var(--color-border);
-	border-radius: var(--border-radius-large);
-	padding: calc(var(--default-grid-baseline) * 3);
-	display: flex;
-	flex-direction: column;
-	gap: var(--default-grid-baseline);
-}
-
-.dr-preview__body {
-	margin-top: calc(var(--default-grid-baseline) * 2);
-}
 
 .dr-failed {
 	list-style: disc;

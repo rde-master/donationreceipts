@@ -24,16 +24,15 @@
 				label="Empfänger"
 				required />
 			<NcTextField v-model="mail.subject" label="Betreff" required />
-			<NcTextArea v-model="mail.body"
-				label="Text"
-				resize="vertical"
-				rows="9" />
+			<HtmlEditor v-model="mail.body" label="Text" :placeholders="mail.placeholders" />
 			<p class="dr-attachment">
 				<NcIconSvgWrapper :path="mdiPaperclip" :size="18" />
 				<a v-if="mail.attachment" :href="receiptFileUrl(receipt.id, 'signed')" target="_blank">{{ mail.attachment }}</a>
 				<span v-else class="dr-warning">Unterschriebene Fassung fehlt</span>
 				<span class="dr-muted">(mit Unterschrift und Stempel)</span>
 			</p>
+			<h3>Vorschau</h3>
+			<MailPreview :to="mail.to" :subject="mail.preview.subject" :html="mail.preview.html" />
 			<NcNoteCard v-if="error" type="error">
 				{{ error }}
 			</NcNoteCard>
@@ -64,11 +63,14 @@ import NcDialog from '@nextcloud/vue/components/NcDialog'
 import NcIconSvgWrapper from '@nextcloud/vue/components/NcIconSvgWrapper'
 import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
 import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
-import NcTextArea from '@nextcloud/vue/components/NcTextArea'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
-import { onMounted, ref } from 'vue'
-import { errorMessage, getMailPreview, receiptFileUrl, sendReceiptMail } from '../api.js'
+import { defineAsyncComponent, onMounted, ref, watch } from 'vue'
+import { errorMessage, getMailPreview, receiptFileUrl, renderReceiptMail, sendReceiptMail } from '../api.js'
 import { formatDateTime } from '../format.js'
+import MailPreview from './MailPreview.vue'
+
+// Tiptap is large: only loaded where a mail text is edited
+const HtmlEditor = defineAsyncComponent(() => import('./HtmlEditor.vue'))
 
 const props = defineProps({
 	receipt: { type: Object, required: true },
@@ -78,6 +80,7 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'sent'])
 
+// subject and body are the template (with placeholders); the server fills it in when sending
 const mail = ref(null)
 const sending = ref(false)
 const error = ref('')
@@ -87,9 +90,26 @@ onMounted(async () => {
 		mail.value = await getMailPreview(props.receipt.id)
 	} catch (e) {
 		error.value = errorMessage(e)
-		mail.value = { to: '', subject: '', body: '', attachment: null, missing: [], error: null }
+		mail.value = { to: '', subject: '', body: '', preview: { subject: '', html: '' }, attachment: null, missing: [], error: null, placeholders: {} }
 	}
 })
+
+let timer
+watch(() => mail.value && [mail.value.subject, mail.value.body], (now, before) => {
+	if (!before) {
+		return // first load already brings the preview
+	}
+	clearTimeout(timer)
+	timer = setTimeout(async () => {
+		try {
+			const rendered = await renderReceiptMail(props.receipt.id, { subject: mail.value.subject, body: mail.value.body })
+			mail.value.preview = { subject: rendered.subject, html: rendered.html }
+			mail.value.error = rendered.error
+		} catch (e) {
+			error.value = errorMessage(e)
+		}
+	}, 400)
+}, { deep: true })
 
 async function send() {
 	sending.value = true

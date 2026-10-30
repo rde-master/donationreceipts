@@ -27,7 +27,10 @@ Der vollständige Plan steht in [docs/plan.md](docs/plan.md), die Änderungen je
   „nicht unterschrieben“ und „unterschrieben“. Ordner und Dateien sind über ihre Datei-ID
   zugeordnet; bei Änderungen bleibt die alte Fassung in der Versionshistorie.
 - **E-Mail**: Versand der unterschriebenen Fassung über einen eigenen SMTP-Zugang nach einer
-  Vorschau; Vorlage mit Platzhaltern; Versandzeitpunkt und Empfänger werden gespeichert. Mit
+  Vorschau; Vorlage mit Platzhaltern; Versandzeitpunkt und Empfänger werden gespeichert. Alle
+  Mails sind HTML mit automatisch erzeugter Textfassung; die Vorlagen bearbeitet ein
+  WYSIWYG-Editor (Tiptap) mit Platzhalter-Menü und Bildern, die beim Versand eingebettet werden.
+  Mit
   `{ordnerlink}` enthält die Mail einen öffentlichen Link (nur lesen) auf den Ordner
   „unterschrieben“ des Spenders, über den er alle seine Bescheinigungen jederzeit wieder
   herunterladen kann. Der Link wird beim ersten Gebrauch als Nextcloud-Freigabe angelegt und

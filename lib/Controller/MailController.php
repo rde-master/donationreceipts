@@ -35,6 +35,18 @@ class MailController extends Controller {
         }
     }
 
+    /**
+     * A template edited in the dialog, rendered for the preview.
+     */
+    #[NoAdminRequired]
+    public function render(int $id, string $subject, string $body = ''): JSONResponse {
+        try {
+            return new JSONResponse($this->mail->renderPreview($this->receipts->find($id), $subject, $body));
+        } catch (DoesNotExistException) {
+            return new JSONResponse(['error' => 'Bescheinigung nicht gefunden'], Http::STATUS_NOT_FOUND);
+        }
+    }
+
     #[NoAdminRequired]
     #[UserRateLimit(limit: 60, period: 3600)]
     public function send(int $id, string $to, string $subject, string $body): JSONResponse {

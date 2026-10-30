@@ -12,7 +12,9 @@ use OCA\DonationReceipts\Db\Sponsor;
 /**
  * Texts around sponsor letters with placeholders like {anrede}: the
  * letter itself (LetterTemplate), the text above the response form and
- * the confirmation mail after a response. Rendering uses MailTemplate::render.
+ * the confirmation mail after a response. The defaults are plain text;
+ * the mail ones become HTML via MailHtml::fromStored(). Rendering:
+ * MailTemplate::render (plain text) and MailHtml::render (HTML).
  */
 class SponsorTemplate {
     public const DEFAULT_LETTER_SUBJECT = 'Ihre Unterstützung für {aktion}';
@@ -39,6 +41,7 @@ class SponsorTemplate {
         'ansprechpartner' => 'Ansprechpartner',
         'aktion' => 'Name der Aktion',
         'link' => 'Link zum Rückmeldeformular',
+        'linkknopf' => 'derselbe Link als Knopf',
         'verein' => 'Name des Vereins',
     ];
 

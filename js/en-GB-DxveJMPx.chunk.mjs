@@ -1,0 +1,1 @@
+import{m as t,l as o,f as a,a as e}from"./index-w8WgTbfD.chunk.mjs";import{f as r}from"./formatLong-DF_9RM-r.chunk.mjs";import"./NcSelect-6v8VQTgc.chunk.mjs";import"./api-D7SPZ635.chunk.mjs";const f={code:"en-GB",formatDistance:e,formatLong:r,formatRelative:a,localize:o,match:t,options:{weekStartsOn:1,firstWeekContainsDate:4}};export{f as enGB};

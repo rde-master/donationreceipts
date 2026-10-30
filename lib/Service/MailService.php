@@ -9,6 +9,7 @@ use OCA\DonationReceipts\Db\DonorMapper;
 use OCA\DonationReceipts\Db\Receipt;
 use OCA\DonationReceipts\Db\ReceiptMapper;
 use OCA\DonationReceipts\Exception\ValidationException;
+use OCA\DonationReceipts\Mail\MailHtml;
 use OCA\DonationReceipts\Mail\SmtpSender;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\Mail\IMailer;
@@ -30,34 +31,64 @@ class MailService {
     }
 
     /**
-     * What would be sent: recipient, subject and text from the template.
+     * The mail dialog: recipient, the template (subject and HTML text with
+     * placeholders, editable before sending) and how it looks rendered.
      *
-     * @return array{to: string, subject: string, body: string, attachment: string|null, missing: list<string>, error: string|null}
+     * @return array{to: string, subject: string, body: string, preview: array{subject: string, html: string}, attachment: string|null, missing: list<string>, error: string|null, placeholders: array<string, string>}
      */
     public function preview(Receipt $receipt): array {
         $donor = $this->donors->find($receipt->getDonorId());
         $file = $this->storage->getFile($receipt->getFileSignedId());
+        $template = $this->templates();
+        $rendered = $this->renderPreview($receipt, $template['subject'], $template['body']);
+        return [
+            'to' => (string)$donor->getEmail(),
+            'subject' => $template['subject'],
+            'body' => $template['body'],
+            'preview' => ['subject' => $rendered['subject'], 'html' => $rendered['html']],
+            'attachment' => $file?->getName(),
+            'missing' => $this->settings->missingForMail(),
+            'error' => $rendered['error'],
+            'placeholders' => MailTemplate::PLACEHOLDERS,
+        ];
+    }
+
+    /**
+     * A (possibly edited) template rendered for the receipt, as complete
+     * HTML document for the preview.
+     *
+     * @return array{subject: string, html: string, error: string|null}
+     */
+    public function renderPreview(Receipt $receipt, string $subject, string $body): array {
+        $donor = $this->donors->find($receipt->getDonorId());
         $error = null;
         try {
-            $mail = $this->render($receipt, $donor);
+            $mail = $this->render($receipt, $donor, $subject, $body);
         } catch (ValidationException $e) {
             // e.g. the folder link could not be created; the text shows the placeholder
             $error = $e->getMessage();
-            $mail = $this->render($receipt, $donor, false);
+            $mail = $this->render($receipt, $donor, $subject, $body, false);
         }
+        return ['subject' => $mail['subject'], 'html' => MailHtml::document($mail['html']), 'error' => $error];
+    }
+
+    /**
+     * Subject and HTML text of the receipt mail as set in the settings.
+     *
+     * @return array{subject: string, body: string}
+     */
+    public function templates(): array {
         return [
-            'to' => (string)$donor->getEmail(),
-        ] + $mail + [
-            'attachment' => $file?->getName(),
-            'missing' => $this->settings->missingForMail(),
-            'error' => $error,
+            'subject' => $this->settings->getString('mail_subject'),
+            'body' => $this->settings->getString('mail_body'),
         ];
     }
 
     /**
      * Sends the signed PDF and records time and recipient at the receipt.
+     * Subject and text are templates; they are filled in here.
      *
-     * @throws ValidationException invalid input or sending failed (message for the user)
+     * @throws ValidationException invalid input, folder link or sending failed (message for the user)
      */
     public function sendReceipt(Receipt $receipt, string $to, string $subject, string $body): Receipt {
         $to = trim($to);
@@ -72,7 +103,8 @@ class MailService {
             throw new ValidationException('Die unterschriebene Fassung fehlt im Spenderordner. Speichere die Bescheinigung erneut.');
         }
 
-        $email = $this->sender->newEmail(SettingsService::ACCOUNT_RECEIPTS, $to, $subject, $body)
+        $mail = $this->render($receipt, $this->donors->find($receipt->getDonorId()), $subject, $body);
+        $email = $this->sender->newEmail(SettingsService::ACCOUNT_RECEIPTS, $to, $mail['subject'], $mail['html'])
             ->attach($file->getContent(), $file->getName(), 'application/pdf');
         $this->sender->send(SettingsService::ACCOUNT_RECEIPTS, $email);
 
@@ -83,23 +115,21 @@ class MailService {
     }
 
     /**
-     * Subject and text of the receipt mail from the settings' template.
-     * {ordnerlink} is only resolved if the template uses it.
+     * Fills a template for the receipt. The HTML is sanitized first;
+     * {ordnerlink}/{ordnerknopf} are only resolved if used.
      *
-     * @return array{subject: string, body: string}
+     * @return array{subject: string, html: string} html: body fragment
      * @throws ValidationException the folder link could not be created
      */
-    public function render(Receipt $receipt, Donor $donor, bool $withFolderLink = true): array {
-        $subject = $this->settings->getString('mail_subject');
-        $body = $this->settings->getString('mail_body');
+    public function render(Receipt $receipt, Donor $donor, string $subject, string $body, bool $withFolderLink = true): array {
+        $body = MailHtml::sanitize($body);
         $values = MailTemplate::values($receipt, $donor, $this->settings->getString('org_name'));
-        $placeholder = '{' . MailTemplate::FOLDER_LINK . '}';
-        if ($withFolderLink && (str_contains($subject, $placeholder) || str_contains($body, $placeholder))) {
+        if ($withFolderLink && preg_match('/\{(' . MailTemplate::FOLDER_LINK . '|ordnerknopf)\}/', $subject . $body) === 1) {
             $values[MailTemplate::FOLDER_LINK] = $this->folderShares->link($donor);
         }
         return [
             'subject' => MailTemplate::render($subject, $values),
-            'body' => MailTemplate::render($body, $values),
+            'html' => MailHtml::render($body, $values),
         ];
     }
 
@@ -112,6 +142,6 @@ class MailService {
         }
         $label = $account === SettingsService::ACCOUNT_SPONSORS ? 'für Sponsoren-Anschreiben' : 'für Bescheinigungen';
         $this->sender->send($account, $this->sender->newEmail($account, trim($to), 'Testmail Spendenbescheinigungen',
-            "Diese Testmail bestätigt, dass der SMTP-Zugang {$label} der App Spendenbescheinigungen funktioniert."));
+            "<p>Diese Testmail bestätigt, dass der SMTP-Zugang {$label} der App Spendenbescheinigungen funktioniert.</p>"));
     }
 }

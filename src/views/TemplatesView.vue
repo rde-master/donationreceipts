@@ -33,18 +33,16 @@
 				<h3>{{ form.id ? 'Vorlage bearbeiten' : 'Neue Vorlage' }}</h3>
 				<NcTextField v-model="form.name" label="Name der Vorlage" required />
 				<NcTextField v-model="form.subject" label="Betreff" required />
-				<NcTextArea v-model="form.body"
-					label="Text"
-					resize="vertical"
-					rows="12" />
+				<HtmlEditor v-model="form.body" label="Text" :placeholders="placeholders" />
 				<p class="dr-muted">
 					Platzhalter:
 					<span v-for="(label, key) in placeholders" :key="key" class="dr-placeholder">
 						<code>{{ '{' + key + '}' }}</code> {{ label }}
 					</span>
 				</p>
-				<NcNoteCard v-if="!form.body.includes('{link}')" type="warning">
-					Der Text enthält keinen <code>{link}</code> – ohne Link können Sponsoren nicht antworten.
+				<NcNoteCard v-if="!/\{link(knopf)?\}/.test(form.body)" type="warning">
+					Der Text enthält weder <code>{link}</code> noch <code>{linkknopf}</code> – ohne Link können
+					Sponsoren nicht antworten.
 				</NcNoteCard>
 				<div class="dr-actions">
 					<NcButton type="submit" variant="primary" :disabled="saving">
@@ -70,10 +68,12 @@ import NcEmptyContent from '@nextcloud/vue/components/NcEmptyContent'
 import NcIconSvgWrapper from '@nextcloud/vue/components/NcIconSvgWrapper'
 import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
 import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
-import NcTextArea from '@nextcloud/vue/components/NcTextArea'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
-import { onMounted, ref } from 'vue'
+import { defineAsyncComponent, onMounted, ref } from 'vue'
 import { createLetterTemplate, deleteLetterTemplate, errorMessage, listLetterTemplates, updateLetterTemplate } from '../api.js'
+
+// Tiptap is large: only loaded where a mail text is edited
+const HtmlEditor = defineAsyncComponent(() => import('../components/HtmlEditor.vue'))
 
 const loading = ref(true)
 const saving = ref(false)

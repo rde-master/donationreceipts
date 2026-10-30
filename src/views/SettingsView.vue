@@ -122,11 +122,12 @@
 
 			<section>
 				<h3>E-Mail-Vorlage</h3>
+				<p class="dr-muted">
+					Versendet wird HTML mit einer automatisch erzeugten Textfassung für Mailprogramme ohne HTML.
+					Eingefügte Bilder werden in die Mail eingebettet.
+				</p>
 				<NcTextField v-model="values.mail_subject" label="Betreff" />
-				<NcTextArea v-model="values.mail_body"
-					label="Text"
-					resize="vertical"
-					rows="8" />
+				<HtmlEditor v-model="values.mail_body" label="Text" :placeholders="placeholders" />
 				<p class="dr-muted">
 					Platzhalter:
 					<span v-for="(label, key) in placeholders" :key="key" class="dr-placeholder">
@@ -206,10 +207,7 @@
 					Geht nach jeder Rückmeldung (auch nach Änderungen) an die E-Mail-Adresse des Sponsors.
 				</p>
 				<NcTextField v-model="values.confirm_subject" label="Betreff" />
-				<NcTextArea v-model="values.confirm_body"
-					label="Text"
-					resize="vertical"
-					rows="10" />
+				<HtmlEditor v-model="values.confirm_body" label="Text" :placeholders="confirmPlaceholders" />
 				<p class="dr-muted">
 					Platzhalter:
 					<span v-for="(label, key) in confirmPlaceholders" :key="key" class="dr-placeholder">
@@ -278,9 +276,12 @@ import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
 import NcPasswordField from '@nextcloud/vue/components/NcPasswordField'
 import NcTextArea from '@nextcloud/vue/components/NcTextArea'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
-import { computed, onMounted, ref } from 'vue'
+import { computed, defineAsyncComponent, onMounted, ref } from 'vue'
 import { errorMessage, getSettings, sendTestMail, setMainFolder, updateSettings } from '../api.js'
 import ImageSetting from '../components/ImageSetting.vue'
+
+// Tiptap is large: only loaded where a mail text is edited
+const HtmlEditor = defineAsyncComponent(() => import('../components/HtmlEditor.vue'))
 
 const FOLDER_LABELS = {
 	unsigned: 'Hauptordner „nicht unterschrieben“',
