@@ -6,9 +6,11 @@ namespace OCA\DonationReceipts\Controller;
 
 use OCA\DonationReceipts\Db\Campaign;
 use OCA\DonationReceipts\Db\Inquiry;
+use OCA\DonationReceipts\Db\Reply;
 use OCA\DonationReceipts\Exception\ValidationException;
 use OCA\DonationReceipts\Service\CampaignService;
 use OCA\DonationReceipts\Service\InquiryService;
+use OCA\DonationReceipts\Service\ReplyService;
 use OCA\DonationReceipts\Service\SettingsService;
 use OCA\DonationReceipts\Service\SponsorService;
 use OCA\DonationReceipts\Service\SponsorTemplate;
@@ -31,6 +33,7 @@ class CampaignController extends Controller {
         private CampaignService $campaigns,
         private InquiryService $inquiries,
         private SponsorService $sponsors,
+        private ReplyService $replies,
         private SettingsService $settings,
         private IUserSession $userSession,
     ) {
@@ -143,6 +146,26 @@ class CampaignController extends Controller {
             return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
         } catch (DoesNotExistException) {
             return new JSONResponse(['error' => 'Aktion oder möglicher Sponsor nicht gefunden'], Http::STATUS_NOT_FOUND);
+        }
+    }
+
+    /**
+     * Status of a sponsor's answer (e.g. "diesmal nicht"). With $replyId the
+     * reply mail it answers is marked done at the same time.
+     */
+    #[NoAdminRequired]
+    public function outcome(int $id, int $sponsorId, string $outcome, string $note = '', ?int $replyId = null): JSONResponse {
+        try {
+            $inquiry = $this->inquiries->setOutcome($id, $sponsorId, $outcome, $note, $this->uid());
+            if ($replyId !== null) {
+                $this->replies->setStatus($replyId, Reply::STATUS_DONE,
+                    'Status: ' . (InquiryService::OUTCOME_LABELS[$outcome] ?? $outcome) . ($note !== '' ? ' – ' . trim($note) : ''), $this->uid());
+            }
+            return new JSONResponse($this->serializeInquiry($inquiry));
+        } catch (ValidationException $e) {
+            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
+        } catch (DoesNotExistException) {
+            return new JSONResponse(['error' => 'Aktion, möglicher Sponsor oder Antwort nicht gefunden'], Http::STATUS_NOT_FOUND);
         }
     }
 

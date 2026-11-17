@@ -110,6 +110,28 @@ class ImapClient {
     }
 
     /**
+     * UIDs of messages received on or after the day of $timestamp, ascending.
+     *
+     * @return list<int>
+     * @throws ImapException
+     */
+    public function uidsSince(int $timestamp): array {
+        $uids = [];
+        // IMAP dates use English month names, independent of the locale
+        foreach ($this->command('UID SEARCH SINCE ' . gmdate('j-M-Y', $timestamp)) as $response) {
+            if (preg_match('/^\* SEARCH\b(.*)$/i', $response['line'], $m) === 1) {
+                foreach (preg_split('/\s+/', trim($m[1])) ?: [] as $uid) {
+                    if ($uid !== '') {
+                        $uids[] = (int)$uid;
+                    }
+                }
+            }
+        }
+        sort($uids);
+        return array_values(array_unique($uids));
+    }
+
+    /**
      * The raw message (at most $maxBytes; larger ones are cut off).
      *
      * @throws ImapException

@@ -60,6 +60,16 @@ use OCP\AppFramework\Db\Entity;
  * @method void setRemarks(?string $remarks)
  * @method string|null getReceiptEmail()
  * @method void setReceiptEmail(?string $email)
+ * @method string|null getOutcome()
+ * @method void setOutcome(?string $outcome)
+ * @method string|null getOutcomeNote()
+ * @method void setOutcomeNote(?string $note)
+ * @method string|null getOutcomeBy()
+ * @method void setOutcomeBy(?string $uid)
+ * @method int|null getOutcomeAt()
+ * @method void setOutcomeAt(?int $timestamp)
+ * @method int|null getLastReplyAt()
+ * @method void setLastReplyAt(?int $timestamp)
  * @method string|null getResponseBy()
  * @method void setResponseBy(?string $uid)
  * @method int|null getReceiptId()
@@ -77,6 +87,20 @@ class Inquiry extends Entity implements JsonSerializable {
     public const TICKETS_NONE = 'none';
     public const TICKETS_LATER = 'later';
     public const TICKETS = [self::TICKETS_TWO, self::TICKETS_ONE, self::TICKETS_NONE, self::TICKETS_LATER];
+
+    /** Status of the answer: will donate, data comes with the response. */
+    public const OUTCOME_PLEDGED = 'pledged';
+    /** Will donate, but the data for the receipt is still missing. */
+    public const OUTCOME_INCOMPLETE = 'incomplete';
+    /** Undecided, will get back to us. */
+    public const OUTCOME_LATER = 'later';
+    /** Not this time. */
+    public const OUTCOME_DECLINED = 'declined';
+    /** Not this time and never again (also kept on the sponsor). */
+    public const OUTCOME_NO_CONTACT = 'no_contact';
+    public const OUTCOMES = [self::OUTCOME_PLEDGED, self::OUTCOME_INCOMPLETE, self::OUTCOME_LATER, self::OUTCOME_DECLINED, self::OUTCOME_NO_CONTACT];
+    /** No further letter for this campaign. */
+    public const OUTCOMES_REFUSED = [self::OUTCOME_DECLINED, self::OUTCOME_NO_CONTACT];
 
     // No defaults: Entity only persists values that differ from the initial one.
     protected $campaignId;
@@ -103,6 +127,11 @@ class Inquiry extends Entity implements JsonSerializable {
     protected $logoFileId;
     protected $remarks;
     protected $receiptEmail;
+    protected $outcome;
+    protected $outcomeNote;
+    protected $outcomeBy;
+    protected $outcomeAt;
+    protected $lastReplyAt;
     protected $responseBy;
     protected $receiptId;
     protected $createdBy;
@@ -118,12 +147,27 @@ class Inquiry extends Entity implements JsonSerializable {
         $this->addType('publish', 'boolean');
         $this->addType('logoFileId', 'integer');
         $this->addType('receiptId', 'integer');
+        $this->addType('outcomeAt', 'integer');
+        $this->addType('lastReplyAt', 'integer');
         $this->addType('createdAt', 'integer');
         $this->addType('updatedAt', 'integer');
     }
 
     public function hasResponse(): bool {
         return $this->respondedAt !== null;
+    }
+
+    /**
+     * Status of the answer; responses from before there was a status count
+     * as pledged. Null = no answer yet.
+     */
+    public function getEffectiveOutcome(): ?string {
+        return $this->outcome ?? ($this->hasResponse() ? self::OUTCOME_PLEDGED : null);
+    }
+
+    /** Pledged with the data for the receipt (the amount counts). */
+    public function isPledged(): bool {
+        return $this->hasResponse() && $this->getEffectiveOutcome() === self::OUTCOME_PLEDGED;
     }
 
     /** The donation has arrived and the receipt exists. */
@@ -187,6 +231,11 @@ class Inquiry extends Entity implements JsonSerializable {
             'response' => $this->hasResponse() ? $this->responseData() + ['displayName' => $this->getDisplayName()] : null,
             // who entered the response in the app (null = the sponsor via the form)
             'responseBy' => $this->responseBy,
+            'outcome' => $this->getEffectiveOutcome(),
+            'outcomeNote' => $this->outcomeNote ?? '',
+            'outcomeBy' => $this->outcomeBy,
+            'outcomeAt' => $this->outcomeAt,
+            'lastReplyAt' => $this->lastReplyAt,
             'hasLogo' => $this->logoFileId !== null,
             'receiptId' => $this->receiptId,
             'createdAt' => $this->createdAt,

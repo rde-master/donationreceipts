@@ -221,3 +221,10 @@ export async function fetchReplies() {
 export async function testImap() {
 	return (await axios.post(base('/replies/test'))).data
 }
+
+/**
+ * Status of a sponsor's answer; with replyId the reply mail is marked done too.
+ */
+export async function setOutcome(campaignId, sponsorId, outcome, note = '', replyId = null) {
+	return (await axios.put(base(`/campaigns/${campaignId}/sponsors/${sponsorId}/outcome`), { outcome, note, replyId })).data
+}

@@ -54,6 +54,15 @@ class InquiryService {
         'goodsDescription' => 2000, 'remarks' => 2000, 'receiptEmail' => 255,
     ];
 
+    /** Labels of the answer status, as in the app (outcome.js). */
+    public const OUTCOME_LABELS = [
+        Inquiry::OUTCOME_PLEDGED => 'Zusage',
+        Inquiry::OUTCOME_INCOMPLETE => 'Zusage – Angaben fehlen noch',
+        Inquiry::OUTCOME_LATER => 'Meldet sich noch',
+        Inquiry::OUTCOME_DECLINED => 'Diesmal nicht',
+        Inquiry::OUTCOME_NO_CONTACT => 'Bitte nicht mehr anschreiben',
+    ];
+
     /** Highest amount accepted from the public form: 10 million euros. */
     private const MAX_AMOUNT_CENTS = 1_000_000_000;
 
@@ -98,29 +107,49 @@ class InquiryService {
      * @return list<Inquiry>
      */
     public function openResponses(): array {
-        return $this->inquiries->findOpenResponses();
+        // a pledge withdrawn later ("diesmal nicht") is no open donation
+        return array_values(array_filter($this->inquiries->findOpenResponses(), static fn (Inquiry $i): bool => $i->isPledged()));
     }
 
     /**
      * Key figures of a campaign's inquiries.
      *
      * @param list<Inquiry> $inquiries
-     * @return array{sent: int, responded: int, received: int, pledgedCents: int, openCents: int, tickets: int, ticketsLater: int, publish: int}
+     * "responded" counts every answer with a status; amounts, tickets and
+     * logos only pledges with data.
+     *
+     * @return array{sent: int, responded: int, received: int, pledgedCents: int, openCents: int, tickets: int, ticketsLater: int, publish: int, incomplete: int, later: int, declined: int, repliesWithoutStatus: int}
      */
     public static function summary(array $inquiries): array {
-        $summary = ['sent' => 0, 'responded' => 0, 'received' => 0, 'pledgedCents' => 0, 'openCents' => 0, 'tickets' => 0, 'ticketsLater' => 0, 'publish' => 0];
+        $summary = ['sent' => 0, 'responded' => 0, 'received' => 0, 'pledgedCents' => 0, 'openCents' => 0, 'tickets' => 0, 'ticketsLater' => 0, 'publish' => 0,
+            'incomplete' => 0, 'later' => 0, 'declined' => 0, 'repliesWithoutStatus' => 0];
         foreach ($inquiries as $inquiry) {
             if ($inquiry->getSentAt() !== null) {
                 $summary['sent']++;
             }
-            if (!$inquiry->hasResponse()) {
+            $outcome = $inquiry->getEffectiveOutcome();
+            if ($outcome === null) {
+                if ($inquiry->getLastReplyAt() !== null) {
+                    $summary['repliesWithoutStatus']++;
+                }
                 continue;
             }
             $summary['responded']++;
-            $summary['pledgedCents'] += (int)$inquiry->getAmountCents();
+            if ($outcome === Inquiry::OUTCOME_INCOMPLETE) {
+                $summary['incomplete']++;
+            } elseif ($outcome === Inquiry::OUTCOME_LATER) {
+                $summary['later']++;
+            } elseif (in_array($outcome, Inquiry::OUTCOMES_REFUSED, true)) {
+                $summary['declined']++;
+            }
             if ($inquiry->isReceived()) {
                 $summary['received']++;
-            } else {
+            }
+            if (!$inquiry->isPledged()) {
+                continue;
+            }
+            $summary['pledgedCents'] += (int)$inquiry->getAmountCents();
+            if (!$inquiry->isReceived()) {
                 $summary['openCents'] += (int)$inquiry->getAmountCents();
             }
             $summary['tickets'] += match ($inquiry->getTickets()) {
@@ -195,22 +224,35 @@ class InquiryService {
         $body = MailHtml::sanitize($body);
         $emails = [];
         $targets = [];
+        // not sent at all: asked not to be written to / declined this campaign
+        $skipped = [];
         foreach ($sponsorIds as $sponsorId) {
             try {
                 $sponsor = $this->sponsors->find($sponsorId);
             } catch (DoesNotExistException) {
                 throw new ValidationException('Ein ausgewählter möglicher Sponsor existiert nicht mehr');
             }
-            $inquiry = $this->inquiries->findByCampaignAndSponsor($campaignId, $sponsorId) ?? $this->createInquiry($campaign, $sponsor, $uid);
+            $existing = $this->inquiries->findByCampaignAndSponsor($campaignId, $sponsorId);
+            if ($sponsor->isNoContact()) {
+                $skipped[] = ['sponsorId' => $sponsorId, 'name' => $sponsor->getName(), 'email' => $sponsor->getEmail(),
+                    'error' => 'möchte nicht mehr angeschrieben werden – nicht gesendet'];
+                continue;
+            }
+            if ($existing !== null && in_array($existing->getEffectiveOutcome(), Inquiry::OUTCOMES_REFUSED, true)) {
+                $skipped[] = ['sponsorId' => $sponsorId, 'name' => $sponsor->getName(), 'email' => $sponsor->getEmail(),
+                    'error' => 'hat für diese Aktion abgesagt – nicht gesendet'];
+                continue;
+            }
+            $inquiry = $existing ?? $this->createInquiry($campaign, $sponsor, $uid);
             $values = SponsorTemplate::values($sponsor, $campaign, $this->link($inquiry), $orgName);
             $emails[$sponsorId] = $this->withMessageId($this->sender->newEmail(SettingsService::ACCOUNT_SPONSORS, $sponsor->getEmail(),
                 MailTemplate::render($subject, $values), MailHtml::render($body, $values)), $inquiry);
             $targets[$sponsorId] = [$sponsor, $inquiry];
         }
 
-        $errors = $this->sender->sendEach(SettingsService::ACCOUNT_SPONSORS, $emails);
+        $errors = $emails === [] ? [] : $this->sender->sendEach(SettingsService::ACCOUNT_SPONSORS, $emails);
 
-        $results = [];
+        $results = $skipped;
         $now = $this->time->getTime();
         foreach ($targets as $sponsorId => [$sponsor, $inquiry]) {
             $error = $errors[$sponsorId] ?? null;
@@ -287,6 +329,7 @@ class InquiryService {
         $this->applyResponse($inquiry, $data);
         $now = $this->time->getTime();
         $inquiry->setRespondedAt($now);
+        $this->markPledged($inquiry, null, $now);
         $inquiry->setUpdatedAt($now);
         $inquiry = $this->inquiries->update($inquiry);
 
@@ -331,12 +374,83 @@ class InquiryService {
             $inquiry->setRespondedAt($now);
         }
         $inquiry->setResponseBy($uid);
+        $this->markPledged($inquiry, $uid, $now);
         $inquiry->setUpdatedAt($now);
         $inquiry = $this->inquiries->update($inquiry);
         if ($sendConfirmation) {
             $this->sendConfirmation($inquiry, $sponsor, $campaign);
         }
         return $inquiry;
+    }
+
+    /**
+     * Status of a sponsor's answer for a campaign without (or besides) the
+     * data of a response - e.g. after a reply mail or a phone call.
+     * "no_contact" is also kept on the sponsor; leaving it lifts that again.
+     *
+     * @throws ValidationException
+     * @throws DoesNotExistException unknown campaign or sponsor
+     */
+    public function setOutcome(int $campaignId, int $sponsorId, string $outcome, string $note, string $uid): Inquiry {
+        $campaign = $this->campaigns->find($campaignId);
+        $sponsor = $this->sponsors->find($sponsorId);
+        if (!in_array($outcome, Inquiry::OUTCOMES, true)) {
+            throw new ValidationException('Ungültiger Status');
+        }
+        $note = trim($note);
+        if (mb_strlen($note) > 2000) {
+            throw new ValidationException('Die Notiz ist zu lang');
+        }
+        $inquiry = $this->inquiries->findByCampaignAndSponsor($campaignId, $sponsorId) ?? $this->createInquiry($campaign, $sponsor, $uid);
+        if ($inquiry->isReceived()) {
+            throw new ValidationException('Die Spende ist schon eingegangen; der Status kann nicht mehr geändert werden');
+        }
+        if ($outcome === Inquiry::OUTCOME_PLEDGED && !$inquiry->hasResponse()) {
+            throw new ValidationException('Für eine Zusage bitte die Rückmeldung mit den Angaben erfassen (oder „Zusage – Angaben fehlen noch“ wählen)');
+        }
+        $previous = $inquiry->getEffectiveOutcome();
+        $now = $this->time->getTime();
+        $inquiry->setOutcome($outcome);
+        $inquiry->setOutcomeNote($note === '' ? null : $note);
+        $inquiry->setOutcomeBy($uid);
+        $inquiry->setOutcomeAt($now);
+        $inquiry->setUpdatedAt($now);
+        $inquiry = $this->inquiries->update($inquiry);
+
+        if ($outcome === Inquiry::OUTCOME_NO_CONTACT) {
+            $this->sponsorService->setNoContact($sponsor, true);
+        } elseif ($previous === Inquiry::OUTCOME_NO_CONTACT) {
+            $this->sponsorService->setNoContact($sponsor, false);
+        }
+        return $inquiry;
+    }
+
+    /**
+     * A reply mail to the inquiry has arrived (shown as "Antwort per Mail"
+     * until someone sets the status).
+     */
+    public function noteReply(Inquiry $inquiry, int $receivedAt): void {
+        if ($inquiry->getLastReplyAt() !== null && $inquiry->getLastReplyAt() >= $receivedAt) {
+            return;
+        }
+        $inquiry->setLastReplyAt($receivedAt);
+        $this->inquiries->update($inquiry);
+    }
+
+    /**
+     * A response with data is a pledge. Whoever sends one wants to donate,
+     * so an earlier "nicht mehr anschreiben" is lifted on the sponsor.
+     */
+    private function markPledged(Inquiry $inquiry, ?string $uid, int $now): void {
+        if ($inquiry->getOutcome() === Inquiry::OUTCOME_NO_CONTACT) {
+            try {
+                $this->sponsorService->setNoContact($this->sponsors->find($inquiry->getSponsorId()), false);
+            } catch (DoesNotExistException) {
+            }
+        }
+        $inquiry->setOutcome(Inquiry::OUTCOME_PLEDGED);
+        $inquiry->setOutcomeBy($uid);
+        $inquiry->setOutcomeAt($now);
     }
 
     /**

@@ -33,6 +33,10 @@
 				label="Notiz"
 				resize="vertical"
 				rows="3" />
+			<NcCheckboxRadioSwitch v-model="sponsor.noContact">
+				Möchte nicht mehr angeschrieben werden
+				<span class="dr-muted">(wird bei allen Anschreiben ausgelassen)</span>
+			</NcCheckboxRadioSwitch>
 			<div class="dr-actions">
 				<NcButton type="submit" variant="primary" :disabled="saving">
 					Speichern
@@ -55,6 +59,7 @@
 import { mdiDelete } from '@mdi/js'
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import NcButton from '@nextcloud/vue/components/NcButton'
+import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwitch'
 import NcDialog from '@nextcloud/vue/components/NcDialog'
 import NcIconSvgWrapper from '@nextcloud/vue/components/NcIconSvgWrapper'
 import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
@@ -82,6 +87,7 @@ const sponsor = ref({
 	email: '',
 	donorId: null,
 	notes: '',
+	noContact: false,
 })
 
 // same rule as SponsorTemplate::salutation()

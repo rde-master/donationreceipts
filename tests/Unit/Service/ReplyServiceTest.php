@@ -12,6 +12,7 @@ use OCA\DonationReceipts\Db\Reply;
 use OCA\DonationReceipts\Db\ReplyMapper;
 use OCA\DonationReceipts\Db\Sponsor;
 use OCA\DonationReceipts\Db\SponsorMapper;
+use OCA\DonationReceipts\Mail\ImapClient;
 use OCA\DonationReceipts\Mail\MimeMessage;
 use OCA\DonationReceipts\Service\GroupNotifier;
 use OCA\DonationReceipts\Service\InquiryService;
@@ -99,8 +100,15 @@ class ReplyServiceTest extends TestCase {
         $this->assertNull($this->service->import($this->mail('newsletter@shop.example'), 'raw'));
     }
 
+    public function testReplyMarksInquiryAsAnswered(): void {
+        $this->inquiryService->method('findByMessageReference')->willReturn($this->inquiry);
+        $this->inquiryService->expects($this->once())->method('noteReply')->with($this->inquiry, $this->anything());
+        $this->service->import($this->mail('anna@other.example', "In-Reply-To: <dr.5.abcdefgh.x@verein.de>\r\n"), 'raw');
+    }
+
     public function testAutoReplyIsNoTask(): void {
         $this->inquiryService->method('findByMessageReference')->willReturn($this->inquiry);
+        $this->inquiryService->expects($this->never())->method('noteReply');
         $this->notifier->expects($this->never())->method('reply');
 
         $reply = $this->service->import($this->mail('anna@other.example', "Auto-Submitted: auto-replied\r\nReferences: <dr.5.abcdefgh.x@verein.de>\r\n"), 'raw');
@@ -112,5 +120,43 @@ class ReplyServiceTest extends TestCase {
         $this->replies->method('existsByMessageId')->willReturn(true);
         $this->replies->expects($this->never())->method('insert');
         $this->assertNull($this->service->import($this->mail('anna@other.example'), 'raw'));
+    }
+
+    public function testFirstFetchLooksAtTheLastDays(): void {
+        $client = $this->createMock(ImapClient::class);
+        $client->method('examine')->willReturn(['exists' => 12, 'uidValidity' => 7, 'uidNext' => 50]);
+        $client->expects($this->once())->method('uidsSince')
+            ->with(1_800_000_000 - 30 * 86400)->willReturn([40, 45]);
+        $client->expects($this->once())->method('uidsAfter')->with(39)->willReturn([40, 45]);
+        $client->expects($this->exactly(2))->method('fetch')->willReturn(null);
+
+        $store = [];
+        $appConfig = $this->createMock(IAppConfig::class);
+        $appConfig->method('setValueInt')->willReturnCallback(static function (string $app, string $key, int $value) use (&$store): bool {
+            $store[$key] = $value;
+            return true;
+        });
+        $appConfig->method('getValueInt')->willReturnCallback(static function (string $app, string $key, int $default) use (&$store): int {
+            return $store[$key] ?? $default;
+        });
+        $settings = $this->createMock(SettingsService::class);
+        $settings->method('missingForImap')->willReturn([]);
+        $settings->method('imapAccount')->willReturn(['host' => 'h', 'port' => 993, 'ssl' => true, 'user' => 'u', 'password' => 'p', 'folder' => 'INBOX']);
+        $time = $this->createMock(ITimeFactory::class);
+        $time->method('getTime')->willReturn(1_800_000_000);
+
+        $service = new class($client, $this->replies, $this->inquiries, $this->sponsors, $this->createMock(CampaignMapper::class), $this->inquiryService, $this->notifier, $settings, $appConfig, $this->createMock(ICertificateManager::class), $time, $this->createMock(LoggerInterface::class)) extends ReplyService {
+            public function __construct(private ImapClient $client, ...$args) {
+                parent::__construct(...$args);
+            }
+
+            protected function openClient(array $account): ImapClient {
+                return $this->client;
+            }
+        };
+
+        $this->assertSame(0, $service->fetchNew());
+        $this->assertSame(45, $store['imap_last_uid']);
+        $this->assertSame(7, $store['imap_uid_validity']);
     }
 }

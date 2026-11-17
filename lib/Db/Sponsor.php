@@ -18,6 +18,8 @@ use OCP\AppFramework\Db\Entity;
  * @method void setEmail(string $email)
  * @method int|null getDonorId()
  * @method void setDonorId(?int $donorId)
+ * @method bool|null getNoContact()
+ * @method void setNoContact(?bool $noContact)
  * @method string|null getNotes()
  * @method void setNotes(?string $notes)
  * @method string getCreatedBy()
@@ -35,14 +37,21 @@ class Sponsor extends Entity implements JsonSerializable {
     protected $email;
     protected $donorId;
     protected $notes;
+    protected $noContact;
     protected $createdBy;
     protected $createdAt;
     protected $updatedAt;
 
     public function __construct() {
         $this->addType('donorId', 'integer');
+        $this->addType('noContact', 'boolean');
         $this->addType('createdAt', 'integer');
         $this->addType('updatedAt', 'integer');
+    }
+
+    /** Asked not to be written to any more. */
+    public function isNoContact(): bool {
+        return (bool)$this->noContact;
     }
 
     public function jsonSerialize(): array {
@@ -54,6 +63,7 @@ class Sponsor extends Entity implements JsonSerializable {
             'email' => $this->email,
             'donorId' => $this->donorId,
             'notes' => $this->notes ?? '',
+            'noContact' => $this->isNoContact(),
             'createdBy' => $this->createdBy,
             'createdAt' => $this->createdAt,
             'updatedAt' => $this->updatedAt,

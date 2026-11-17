@@ -24,7 +24,8 @@ use Psr\Log\LoggerInterface;
 
 /**
  * Replies to sponsor letters from the mailbox of the sponsor account
- * (IMAP, read-only). Only new mails are looked at (UID after the last run);
+ * (IMAP, read-only). Only new mails are looked at (UID after the last run;
+ * on the first run those of the last FIRST_RUN_DAYS days);
  * a mail is kept if it answers one of our letters (Message-ID in
  * In-Reply-To/References) or comes from the address of a possible sponsor.
  * Every kept mail is a task ("open") until a group member marks it done.
@@ -34,6 +35,8 @@ class ReplyService {
     private const MAX_PER_RUN = 100;
     private const MAX_MESSAGE_BYTES = 2 * 1024 * 1024;
     private const MAX_BODY_CHARS = 50000;
+    /** First run (or rebuilt mailbox): mails of these last days are looked at. */
+    private const FIRST_RUN_DAYS = 30;
 
     private const STATE_UID_VALIDITY = 'imap_uid_validity';
     private const STATE_LAST_UID = 'imap_last_uid';
@@ -117,8 +120,9 @@ class ReplyService {
 
     /**
      * Fetches new mails (background job every 10 minutes, or by hand).
-     * On the very first run (or if the mailbox was rebuilt) nothing old
-     * is imported - only mails arriving from then on.
+     * On the very first run (or if the mailbox was rebuilt) the mails of the
+     * last FIRST_RUN_DAYS days are looked at, so replies that came in before
+     * the fetch was set up are not lost. Known mails are not imported twice.
      *
      * @return int number of new replies
      * @throws ValidationException not configured or IMAP failed
@@ -132,11 +136,10 @@ class ReplyService {
             $folder = $client->examine($account['folder']);
             $validity = $this->appConfig->getValueInt(Application::APP_ID, self::STATE_UID_VALIDITY, 0);
             if ($validity !== $folder['uidValidity']) {
+                $recent = $client->uidsSince($this->time->getTime() - self::FIRST_RUN_DAYS * 86400);
+                $start = $recent !== [] ? $recent[0] - 1 : max(0, $folder['uidNext'] - 1);
                 $this->appConfig->setValueInt(Application::APP_ID, self::STATE_UID_VALIDITY, $folder['uidValidity']);
-                $this->appConfig->setValueInt(Application::APP_ID, self::STATE_LAST_UID, max(0, $folder['uidNext'] - 1));
-                $client->logout();
-                $this->appConfig->setValueString(Application::APP_ID, self::STATE_LAST_ERROR, '');
-                return 0;
+                $this->appConfig->setValueInt(Application::APP_ID, self::STATE_LAST_UID, $start);
             }
             $lastUid = $this->appConfig->getValueInt(Application::APP_ID, self::STATE_LAST_UID, 0);
             $new = 0;
@@ -215,6 +218,9 @@ class ReplyService {
         }
 
         if (!$auto) {
+            if ($inquiry !== null) {
+                $this->inquiryService->noteReply($inquiry, $reply->getReceivedAt());
+            }
             $this->groupNotifier->reply($reply, $this->sponsorName($sponsorId), $this->campaignName($inquiry));
         }
         return $reply;

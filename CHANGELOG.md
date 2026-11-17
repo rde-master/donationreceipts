@@ -4,6 +4,28 @@ Alle Änderungen der App, neueste zuerst. Versionen nach [SemVer](https://semver
 Fehlerbehebung erhöht die dritte Stelle, neue Funktionen die zweite, mit der Abnahme kommt 1.0.0.
 Jede Version hat einen Git-Tag `v<version>`.
 
+## 0.12.0 – 2026-11-17
+
+- **Antwort-Mails werden in der Aktion erkannt**: Eine zugeordnete Antwort auf ein Anschreiben
+  markiert den Sponsor als „Antwort per Mail – Status offen“ (eigener Filter, Hinweis in der
+  Kachel „Angeschrieben“). Bisher erschien sie nur auf der Seite Antworten.
+- **Status der Rückmeldung**: Zusage · Zusage – Angaben fehlen noch · Meldet sich noch ·
+  Diesmal nicht · Bitte nicht mehr anschreiben, jeweils mit Notiz. Setzbar in der Aktion (neuer
+  Button je Sponsor) und direkt an der Antwort-Mail („Status / Rückmeldung“); die Mail wird dabei
+  als erledigt markiert. Aus demselben Dialog lässt sich die Zusage mit allen Angaben erfassen.
+  Eine Rückmeldung über das Formular setzt den Status automatisch auf „Zusage“.
+- **„Bitte nicht mehr anschreiben“** wird beim möglichen Sponsor hinterlegt (auch im Formular
+  des Sponsors änderbar, Hinweis in der Liste). Solche Sponsoren und Absagen der Aktion lassen
+  sich nicht auswählen und werden beim Anschreiben übersprungen.
+- Aktion: neue Filter (Ohne Antwort, Antwort per Mail, Meldet sich noch, Angaben fehlen, Absage),
+  Absagen und Zusagen ohne Angaben in der Kachel „Rückmeldungen“. Zugesagte Beträge zählen nur
+  noch für Zusagen mit Angaben.
+- Behoben: Beim allerersten Abruf des Postfachs wurden alle schon vorhandenen Mails übersprungen –
+  eine Antwort, die vor dem Einrichten des Abrufs kam, ging so verloren. Jetzt werden die Mails der
+  letzten 30 Tage berücksichtigt.
+- Neue Spalten `dr_inquiries.outcome`, `outcome_note`, `outcome_by`, `outcome_at`,
+  `last_reply_at` und `dr_sponsors.no_contact` (`occ upgrade`).
+
 ## 0.11.1 – 2026-11-17
 
 - Rückmeldeformular: Die Meldung nach dem Speichern („Vielen Dank! Ihre Angaben sind

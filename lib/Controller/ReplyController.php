@@ -7,6 +7,7 @@ namespace OCA\DonationReceipts\Controller;
 use OCA\DonationReceipts\Db\Reply;
 use OCA\DonationReceipts\Exception\ValidationException;
 use OCA\DonationReceipts\Service\CampaignService;
+use OCA\DonationReceipts\Service\InquiryService;
 use OCA\DonationReceipts\Service\ReplyService;
 use OCA\DonationReceipts\Service\SponsorService;
 use OCP\AppFramework\Controller;
@@ -28,6 +29,7 @@ class ReplyController extends Controller {
         private ReplyService $replies,
         private SponsorService $sponsors,
         private CampaignService $campaigns,
+        private InquiryService $inquiries,
         private IUserSession $userSession,
     ) {
         parent::__construct($appName, $request);
@@ -43,10 +45,19 @@ class ReplyController extends Controller {
         foreach ($this->campaigns->list() as $campaign) {
             $campaignNames[$campaign->getId()] = $campaign->getName();
         }
+        // status of the answer of the inquiry a reply belongs to
+        $outcome = function (?int $inquiryId): ?string {
+            try {
+                return $inquiryId === null ? null : $this->inquiries->find($inquiryId)->getEffectiveOutcome();
+            } catch (DoesNotExistException) {
+                return null;
+            }
+        };
         return new JSONResponse([
             'replies' => array_map(static fn (Reply $r) => $r->jsonSerialize() + [
                 'sponsorName' => $sponsorNames[$r->getSponsorId()] ?? '',
                 'campaignName' => $campaignNames[$r->getCampaignId()] ?? '',
+                'outcome' => $outcome($r->getInquiryId()),
             ], $this->replies->list($status !== '' ? $status : null, $campaignId)),
             'enabled' => $this->replies->isEnabled(),
         ] + $this->replies->state());

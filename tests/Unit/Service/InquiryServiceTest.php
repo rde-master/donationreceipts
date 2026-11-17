@@ -329,6 +329,75 @@ class InquiryServiceTest extends TestCase {
         $this->assertSame([
             'sent' => 3, 'responded' => 2, 'received' => 1, 'pledgedCents' => 15000, 'openCents' => 10000,
             'tickets' => 2, 'ticketsLater' => 1, 'publish' => 1,
+            'incomplete' => 0, 'later' => 0, 'declined' => 0, 'repliesWithoutStatus' => 0,
         ], InquiryService::summary([$a, $b, $c]));
+    }
+
+    public function testSummaryCountsStatusWithoutAmounts(): void {
+        $declined = new Inquiry();
+        $declined->setOutcome(Inquiry::OUTCOME_NO_CONTACT);
+        $incomplete = new Inquiry();
+        $incomplete->setOutcome(Inquiry::OUTCOME_INCOMPLETE);
+        $replied = new Inquiry();
+        $replied->setLastReplyAt(5);
+        // a pledge withdrawn after the data was entered: no amount any more
+        $withdrawn = new Inquiry();
+        $withdrawn->setRespondedAt(2);
+        $withdrawn->setAmountCents(9000);
+        $withdrawn->setOutcome(Inquiry::OUTCOME_DECLINED);
+
+        $summary = InquiryService::summary([$declined, $incomplete, $replied, $withdrawn]);
+
+        $this->assertSame(3, $summary['responded']);
+        $this->assertSame(2, $summary['declined']);
+        $this->assertSame(1, $summary['incomplete']);
+        $this->assertSame(1, $summary['repliesWithoutStatus']);
+        $this->assertSame(0, $summary['pledgedCents']);
+    }
+
+    public function testRespondMarksPledged(): void {
+        $this->service->respond(self::TOKEN, self::RESPONSE, null);
+        $this->assertSame(Inquiry::OUTCOME_PLEDGED, $this->inquiry->getOutcome());
+        $this->assertNull($this->inquiry->getOutcomeBy());
+    }
+
+    public function testNoContactIsKeptOnSponsorAndLiftedAgain(): void {
+        $this->inquiries->method('findByCampaignAndSponsor')->willReturn($this->inquiry);
+        $this->sponsorService->expects($this->exactly(2))->method('setNoContact')
+            ->willReturnCallback(function (Sponsor $sponsor, bool $noContact) use (&$calls): Sponsor {
+                $calls[] = $noContact;
+                return $sponsor;
+            });
+        $calls = [];
+
+        $this->service->setOutcome(3, 9, Inquiry::OUTCOME_NO_CONTACT, ' per Mail ', 'kasse');
+        $this->assertSame('per Mail', $this->inquiry->getOutcomeNote());
+        $this->assertSame('kasse', $this->inquiry->getOutcomeBy());
+
+        $this->service->setOutcome(3, 9, Inquiry::OUTCOME_LATER, '', 'kasse');
+        $this->assertSame(Inquiry::OUTCOME_LATER, $this->inquiry->getOutcome());
+        $this->assertSame([true, false], $calls);
+    }
+
+    public function testPledgeWithoutDataIsRejected(): void {
+        $this->inquiries->method('findByCampaignAndSponsor')->willReturn($this->inquiry);
+        $this->expectException(ValidationException::class);
+        $this->service->setOutcome(3, 9, Inquiry::OUTCOME_PLEDGED, '', 'kasse');
+    }
+
+    public function testSendLettersSkipsNoContactAndDeclined(): void {
+        $this->settings->method('missingForMail')->willReturn([]);
+        $this->sponsor->setNoContact(true);
+        $this->sender->expects($this->never())->method('sendEach');
+
+        $results = $this->service->sendLetters(3, [9], 'Betreff', 'Text', 'kasse');
+        $this->assertStringContainsString('nicht mehr angeschrieben', $results[0]['error']);
+
+        $this->sponsor->setNoContact(false);
+        $this->inquiry->setOutcome(Inquiry::OUTCOME_DECLINED);
+        $this->inquiries->method('findByCampaignAndSponsor')->willReturn($this->inquiry);
+        $results = $this->service->sendLetters(3, [9], 'Betreff', 'Text', 'kasse');
+        $this->assertStringContainsString('abgesagt', $results[0]['error']);
+        $this->assertNull($this->inquiry->getSentAt());
     }
 }

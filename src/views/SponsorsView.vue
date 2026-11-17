@@ -49,6 +49,9 @@
 						<RouterLink :to="{ name: 'sponsor-edit', params: { id: sponsor.id } }">
 							{{ sponsor.name }}
 						</RouterLink>
+						<div v-if="sponsor.noContact" class="dr-muted">
+							möchte nicht mehr angeschrieben werden
+						</div>
 					</td>
 					<td>{{ sponsor.contact }}</td>
 					<td>{{ sponsor.email }}</td>

@@ -63,9 +63,17 @@
 							</template>
 						</div>
 					</div>
-					<span :class="reply.status === 'open' ? 'dr-warning' : 'dr-muted'">
-						{{ reply.status === 'open' ? 'zu bearbeiten' : `erledigt${reply.doneBy ? ' von ' + reply.doneBy : ''}` }}
-					</span>
+					<div class="dr-reply__state">
+						<span :class="reply.status === 'open' ? 'dr-warning' : 'dr-muted'">
+							{{ reply.status === 'open' ? 'zu bearbeiten' : `erledigt${reply.doneBy ? ' von ' + reply.doneBy : ''}` }}
+						</span>
+						<span v-if="reply.campaignId" class="dr-muted">
+							Rückmeldung: {{ reply.outcome ? OUTCOMES[reply.outcome].label : 'noch kein Status' }}
+						</span>
+						<span v-else class="dr-muted">
+							keiner Aktion zugeordnet
+						</span>
+					</div>
 				</div>
 				<div class="dr-reply__subject">
 					{{ reply.subject || '(ohne Betreff)' }}
@@ -93,11 +101,13 @@
 					<NcButton v-if="(notes[reply.id] ?? '') !== reply.note" @click="setStatus(reply, reply.status)">
 						Notiz speichern
 					</NcButton>
-					<NcButton v-if="reply.campaignId && reply.sponsorId" variant="tertiary" @click="openManual(reply)">
+					<NcButton v-if="reply.campaignId && reply.sponsorId"
+						:variant="reply.status === 'open' ? 'secondary' : 'tertiary'"
+						@click="openFor(reply)">
 						<template #icon>
-							<NcIconSvgWrapper :path="mdiClipboardEditOutline" />
+							<NcIconSvgWrapper :path="mdiListStatus" />
 						</template>
-						Rückmeldung erfassen
+						Status / Rückmeldung
 					</NcButton>
 					<NcButton variant="tertiary" :href="`mailto:${reply.fromEmail}?subject=${encodeURIComponent('Re: ' + reply.subject)}`">
 						<template #icon>
@@ -109,17 +119,27 @@
 			</li>
 		</ul>
 
-		<ResponseFormDialog v-if="manual"
-			:campaign-id="manual.campaignId"
-			:sponsor="manual.sponsor"
-			:inquiry="manual.inquiry"
-			:ticket-labels="manual.ticketLabels"
-			@close="manual = null" />
+		<OutcomeDialog v-if="target && !target.manual"
+			:campaign-id="target.campaignId"
+			:sponsor="target.sponsor"
+			:inquiry="target.inquiry"
+			:reply-id="target.reply.id"
+			@saved="changed"
+			@manual="target.manual = true"
+			@close="target?.manual || (target = null)" />
+
+		<ResponseFormDialog v-if="target?.manual"
+			:campaign-id="target.campaignId"
+			:sponsor="target.sponsor"
+			:inquiry="target.inquiry"
+			:ticket-labels="target.ticketLabels"
+			@saved="manualSaved"
+			@close="target = null" />
 	</div>
 </template>
 
 <script setup>
-import { mdiCheck, mdiClipboardEditOutline, mdiEmailCheckOutline, mdiRefresh, mdiReply } from '@mdi/js'
+import { mdiCheck, mdiEmailCheckOutline, mdiListStatus, mdiRefresh, mdiReply } from '@mdi/js'
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcEmptyContent from '@nextcloud/vue/components/NcEmptyContent'
@@ -130,8 +150,10 @@ import NcSelect from '@nextcloud/vue/components/NcSelect'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
 import { onMounted, ref, watch } from 'vue'
 import { errorMessage, fetchReplies, getCampaign, listReplies, updateReply } from '../api.js'
+import OutcomeDialog from '../components/OutcomeDialog.vue'
 import ResponseFormDialog from '../components/ResponseFormDialog.vue'
 import { formatDateTime } from '../format.js'
+import { OUTCOMES } from '../outcome.js'
 
 const STATUS = [
 	{ id: 'open', label: 'Zu bearbeiten' },
@@ -152,7 +174,8 @@ const lastError = ref('')
 const status = ref(STATUS[0])
 const expanded = ref({})
 const notes = ref({})
-const manual = ref(null)
+// reply whose answer status / response is being entered
+const target = ref(null)
 
 function shortBody(body) {
 	const match = QUOTE_START.exec(body)
@@ -199,17 +222,35 @@ async function setStatus(reply, newStatus) {
 	}
 }
 
-async function openManual(reply) {
+async function openFor(reply) {
 	try {
 		const data = await getCampaign(reply.campaignId)
 		const row = data.rows.find((r) => r.sponsor.id === reply.sponsorId)
 		if (!row) {
 			return
 		}
-		manual.value = { campaignId: reply.campaignId, sponsor: row.sponsor, inquiry: row.inquiry, ticketLabels: data.ticketLabels }
+		target.value = { reply, campaignId: reply.campaignId, sponsor: row.sponsor, inquiry: row.inquiry, ticketLabels: data.ticketLabels, manual: false }
 	} catch (e) {
 		showError(errorMessage(e))
 	}
+}
+
+async function changed() {
+	await load()
+	window.dispatchEvent(new CustomEvent(REPLIES_CHANGED))
+}
+
+// the response answers the mail: mark it done
+async function manualSaved() {
+	const reply = target.value.reply
+	try {
+		if (reply.status === 'open') {
+			await updateReply(reply.id, 'done', notes.value[reply.id] || 'Rückmeldung erfasst')
+		}
+	} catch (e) {
+		showError(errorMessage(e))
+	}
+	await changed()
 }
 
 watch(status, load)
@@ -246,6 +287,13 @@ onMounted(load)
 	display: flex;
 	justify-content: space-between;
 	gap: calc(var(--default-grid-baseline) * 2);
+}
+
+.dr-reply__state {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	text-align: end;
 }
 
 .dr-reply__subject {

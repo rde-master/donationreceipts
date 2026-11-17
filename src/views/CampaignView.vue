@@ -39,9 +39,16 @@
 			</NcNoteCard>
 
 			<div class="dr-tiles">
-				<StatTile label="Angeschrieben" :value="`${summary.sent} von ${rows.length}`" />
+				<StatTile label="Angeschrieben" :value="`${summary.sent} von ${rows.length}`">
+					<span v-if="summary.repliesWithoutStatus" class="dr-warning">
+						{{ summary.repliesWithoutStatus }} Antwort-Mails ohne Status
+					</span>
+				</StatTile>
 				<StatTile label="Rückmeldungen" :value="String(summary.responded)">
-					davon {{ summary.received }} Spenden eingegangen
+					{{ summary.received }} Spenden eingegangen · {{ summary.declined }} Absagen
+					<template v-if="summary.incomplete">
+						· {{ summary.incomplete }} Zusagen ohne Angaben
+					</template>
 				</StatTile>
 				<StatTile label="Zugesagt" :value="formatAmount(summary.pledgedCents)">
 					Eingang offen: {{ formatAmount(summary.openCents) }}
@@ -97,6 +104,7 @@
 						<td class="dr-check">
 							<NcCheckboxRadioSwitch v-model="selected"
 								:value="row.sponsor.id"
+								:disabled="!selectable(row)"
 								:aria-label="`${row.sponsor.name} auswählen`" />
 						</td>
 						<td>
@@ -107,6 +115,9 @@
 						</td>
 						<td>
 							<span :class="statusClass(row)">{{ statusText(row) }}</span>
+							<div v-if="row.inquiry?.outcomeNote" class="dr-muted dr-pre">
+								{{ row.inquiry.outcomeNote }}
+							</div>
 							<div v-if="row.inquiry?.responseBy" class="dr-muted">
 								manuell erfasst
 							</div>
@@ -137,6 +148,15 @@
 									variant="tertiary"
 									@click="responseRow = row">
 									{{ row.inquiry.receiptId ? 'Ansehen' : 'Rückmeldung' }}
+								</NcButton>
+								<NcButton v-if="!row.inquiry?.receiptId"
+									variant="tertiary"
+									:aria-label="`Status der Rückmeldung von ${row.sponsor.name} setzen`"
+									title="Status der Rückmeldung setzen (z. B. diesmal nicht)"
+									@click="outcomeRow = row">
+									<template #icon>
+										<NcIconSvgWrapper :path="mdiListStatus" />
+									</template>
 								</NcButton>
 								<NcButton v-if="!row.inquiry?.receiptId"
 									variant="tertiary"
@@ -177,6 +197,14 @@
 			@saved="load"
 			@close="manualRow = null" />
 
+		<OutcomeDialog v-if="outcomeRow"
+			:campaign-id="Number(id)"
+			:sponsor="outcomeRow.sponsor"
+			:inquiry="outcomeRow.inquiry"
+			@saved="load"
+			@manual="openManualFromOutcome"
+			@close="outcomeRow = null" />
+
 		<ResponseDialog v-if="responseRow"
 			:inquiry="responseRow.inquiry"
 			:sponsor="responseRow.sponsor"
@@ -203,7 +231,7 @@
 </template>
 
 <script setup>
-import { mdiClipboardEditOutline, mdiDelete, mdiLinkVariant, mdiLockOpenVariantOutline, mdiLockOutline, mdiPencil, mdiSend } from '@mdi/js'
+import { mdiClipboardEditOutline, mdiDelete, mdiLinkVariant, mdiListStatus, mdiLockOpenVariantOutline, mdiLockOutline, mdiPencil, mdiSend } from '@mdi/js'
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwitch'
@@ -218,9 +246,11 @@ import { useRouter } from 'vue-router'
 import { deleteCampaign, errorMessage, getCampaign, listReplies, logoUrl, updateCampaign } from '../api.js'
 import StatTile from '../components/charts/StatTile.vue'
 import LetterDialog from '../components/LetterDialog.vue'
+import OutcomeDialog from '../components/OutcomeDialog.vue'
 import ResponseDialog from '../components/ResponseDialog.vue'
 import ResponseFormDialog from '../components/ResponseFormDialog.vue'
 import { formatAmount, formatDateTime } from '../format.js'
+import { OUTCOMES, REFUSED } from '../outcome.js'
 
 const props = defineProps({
 	id: { type: [String, Number], required: true },
@@ -229,9 +259,13 @@ const props = defineProps({
 const FILTERS = [
 	{ id: 'all', label: 'Alle möglichen Sponsoren' },
 	{ id: 'new', label: 'Noch nicht angeschrieben' },
-	{ id: 'waiting', label: 'Ohne Rückmeldung' },
+	{ id: 'waiting', label: 'Ohne Antwort' },
+	{ id: 'replied', label: 'Antwort per Mail – Status offen' },
+	{ id: 'later', label: 'Meldet sich noch' },
+	{ id: 'incomplete', label: 'Zusage – Angaben fehlen noch' },
 	{ id: 'open', label: 'Zusage, Spende offen' },
 	{ id: 'received', label: 'Spende eingegangen' },
+	{ id: 'declined', label: 'Absage / nicht mehr anschreiben' },
 ]
 
 const router = useRouter()
@@ -241,6 +275,7 @@ const selected = ref([])
 const letterOpen = ref(false)
 const responseRow = ref(null)
 const manualRow = ref(null)
+const outcomeRow = ref(null)
 // open reply mails per sponsor id
 const openReplies = ref({})
 const renameOpen = ref(false)
@@ -252,21 +287,45 @@ const rows = computed(() => data.value.rows)
 
 function state(row) {
 	const inquiry = row.inquiry
-	if (!inquiry?.sentAt && !inquiry?.response) {
-		return 'new'
+	if (inquiry?.receiptId) {
+		return 'received'
 	}
-	if (!inquiry.response) {
-		return 'waiting'
+	switch (inquiry?.outcome) {
+	case 'pledged':
+		return 'open'
+	case 'incomplete':
+	case 'later':
+		return inquiry.outcome
+	case 'declined':
+	case 'no_contact':
+		return 'declined'
 	}
-	return inquiry.receiptId ? 'received' : 'open'
+	if (row.sponsor.noContact) {
+		return 'declined'
+	}
+	if (inquiry?.lastReplyAt) {
+		return 'replied'
+	}
+	return inquiry?.sentAt ? 'waiting' : 'new'
+}
+
+// declined (this campaign) or asked not to be written to: no letter
+function selectable(row) {
+	return state(row) !== 'declined'
+}
+
+// "Spende zugesagt – Angaben erfassen" in the status dialog
+function openManualFromOutcome() {
+	manualRow.value = outcomeRow.value
+	outcomeRow.value = null
 }
 
 const visibleRows = computed(() => filter.value.id === 'all'
 	? rows.value
 	: rows.value.filter((row) => state(row) === filter.value.id))
 
-const allSelected = computed(() => visibleRows.value.length > 0
-	&& visibleRows.value.every((row) => selected.value.includes(row.sponsor.id)))
+const allSelected = computed(() => visibleRows.value.some(selectable)
+	&& visibleRows.value.filter(selectable).every((row) => selected.value.includes(row.sponsor.id)))
 
 // a changed filter only keeps what is still visible
 watch(filter, () => {
@@ -275,7 +334,7 @@ watch(filter, () => {
 })
 
 function selectAll(all) {
-	selected.value = all ? visibleRows.value.map((row) => row.sponsor.id) : []
+	selected.value = all ? visibleRows.value.filter(selectable).map((row) => row.sponsor.id) : []
 }
 
 function statusText(row) {
@@ -285,8 +344,17 @@ function statusText(row) {
 		return inquiry ? 'Versand fehlgeschlagen' : 'nicht angeschrieben'
 	case 'waiting':
 		return `angeschrieben ${formatDateTime(inquiry.sentAt)}`
+	case 'replied':
+		return `Antwort per Mail ${formatDateTime(inquiry.lastReplyAt)} – Status offen`
+	case 'later':
+	case 'incomplete':
+		return OUTCOMES[inquiry.outcome].label
 	case 'open':
 		return 'Zusage – Spende offen'
+	case 'declined':
+		return inquiry && REFUSED.includes(inquiry.outcome)
+			? OUTCOMES[inquiry.outcome].label
+			: 'Möchte nicht mehr angeschrieben werden'
 	default:
 		return 'Spende eingegangen'
 	}
@@ -297,7 +365,10 @@ function statusClass(row) {
 	if (s === 'new' && row.inquiry) {
 		return 'dr-warning'
 	}
-	return s === 'new' || s === 'waiting' ? 'dr-muted' : ''
+	if (s === 'replied' || s === 'incomplete') {
+		return 'dr-warning'
+	}
+	return ['new', 'waiting', 'declined'].includes(s) ? 'dr-muted' : ''
 }
 
 async function copyLink(link) {

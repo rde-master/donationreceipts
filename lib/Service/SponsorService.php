@@ -88,6 +88,18 @@ class SponsorService {
     }
 
     /**
+     * "Bitte nicht mehr anschreiben" (from the status of an answer).
+     */
+    public function setNoContact(Sponsor $sponsor, bool $noContact): Sponsor {
+        if ($sponsor->isNoContact() === $noContact) {
+            return $sponsor;
+        }
+        $sponsor->setNoContact($noContact);
+        $sponsor->setUpdatedAt($this->time->getTime());
+        return $this->mapper->update($sponsor);
+    }
+
+    /**
      * Only sponsors that were never written to can be deleted.
      *
      * @throws ValidationException
@@ -167,9 +179,15 @@ class SponsorService {
             }
         }
 
+        $noContact = $data['noContact'] ?? false;
+        if (!is_bool($noContact)) {
+            throw new ValidationException('Ungültiger Wert für „nicht mehr anschreiben“');
+        }
+
         foreach ($values as $field => $value) {
             $sponsor->{'set' . ucfirst($field)}($value);
         }
         $sponsor->setDonorId($donorId);
+        $sponsor->setNoContact($noContact);
     }
 }
