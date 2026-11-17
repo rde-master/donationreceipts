@@ -103,6 +103,9 @@ class SettingsService {
         // leer = Benutzer des SMTP-Zugangs
         'sponsor_imap_user' => ['type' => 'string', 'default' => ''],
         'sponsor_imap_folder' => ['type' => 'string', 'default' => 'INBOX'],
+        // erledigte Antwort-Mails im Postfach als gelesen markieren und verschieben
+        'sponsor_imap_file_done' => ['type' => 'bool', 'default' => false],
+        'sponsor_imap_done_folder' => ['type' => 'string', 'default' => 'Bearbeitet'],
     ];
 
     public const SMTP_STARTTLS = 'starttls';

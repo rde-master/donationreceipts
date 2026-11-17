@@ -194,4 +194,71 @@ class ReplyServiceTest extends TestCase {
         $this->assertSame(2, $stats['weeks'][11]['count'], 'this week, auto-reply not counted');
         $this->assertSame(1, $stats['weeks'][9]['count'], '20 days ago');
     }
+
+    /**
+     * @param list<Reply> $pending
+     */
+    private function filingService(ImapClient $client, array $pending, bool $enabled = true): ReplyService {
+        $this->replies->method('findUnfiled')->willReturn($pending);
+        $this->replies->method('update')->willReturnArgument(0);
+        $this->replies->method('find')->willReturnCallback(static fn (int $id) => $pending[0]);
+        $settings = $this->createMock(SettingsService::class);
+        $settings->method('get')->willReturnCallback(static fn (string $key) => $key === 'sponsor_imap_file_done' ? $enabled : 0);
+        $settings->method('getString')->willReturnCallback(static fn (string $key) => $key === 'sponsor_imap_done_folder' ? 'Bearbeitet' : '');
+        $settings->method('missingForImap')->willReturn([]);
+        $settings->method('imapAccount')->willReturn(['host' => 'h', 'port' => 993, 'ssl' => true, 'user' => 'u', 'password' => 'p', 'folder' => 'INBOX']);
+        $time = $this->createMock(ITimeFactory::class);
+        $time->method('getTime')->willReturn(1_800_000_000);
+        return new class($client, $this->replies, $this->inquiries, $this->sponsors, $this->createMock(CampaignMapper::class), $this->inquiryService, $this->notifier, $settings, $this->createMock(IAppConfig::class), $this->createMock(ICertificateManager::class), $time, $this->createMock(LoggerInterface::class)) extends ReplyService {
+            public function __construct(private ImapClient $client, ...$args) {
+                parent::__construct(...$args);
+            }
+
+            protected function openClient(array $account): ImapClient {
+                return $this->client;
+            }
+        };
+    }
+
+    public function testDoneReplyIsMarkedReadAndMoved(): void {
+        $reply = new Reply();
+        $reply->setId(4);
+        $reply->setMessageId('<m1@example.org>');
+        $reply->setStatus(Reply::STATUS_OPEN);
+        $client = $this->createMock(ImapClient::class);
+        $client->expects($this->once())->method('ensureFolder')->with('Bearbeitet')->willReturn('INBOX.Bearbeitet');
+        $client->expects($this->once())->method('select')->with('INBOX');
+        $client->method('uidsByMessageId')->with('<m1@example.org>')->willReturn([17]);
+        $client->expects($this->once())->method('markReadAndMove')->with([17], 'INBOX.Bearbeitet');
+        $client->expects($this->once())->method('logout');
+
+        $service = $this->filingService($client, [$reply]);
+        $service->setStatus(4, Reply::STATUS_DONE, '', 'kasse');
+
+        $this->assertSame(1_800_000_000, $reply->getFiledAt());
+    }
+
+    public function testMailWithoutMessageIdIsFiledWithoutSearching(): void {
+        $reply = new Reply();
+        $reply->setMessageId('<sha1.abc@donationreceipts>');
+        $client = $this->createMock(ImapClient::class);
+        $client->method('ensureFolder')->willReturn('Bearbeitet');
+        $client->expects($this->never())->method('uidsByMessageId');
+        $client->expects($this->once())->method('markReadAndMove')->with([], 'Bearbeitet');
+
+        $this->assertSame(1, $this->filingService($client, [$reply])->fileDone());
+        $this->assertNotNull($reply->getFiledAt());
+    }
+
+    public function testNothingIsFiledWhenSwitchedOff(): void {
+        $reply = new Reply();
+        $reply->setId(4);
+        $reply->setStatus(Reply::STATUS_OPEN);
+        $client = $this->createMock(ImapClient::class);
+        $client->expects($this->never())->method('select');
+
+        $this->filingService($client, [$reply], false)->setStatus(4, Reply::STATUS_DONE, '', 'kasse');
+
+        $this->assertNull($reply->getFiledAt());
+    }
 }

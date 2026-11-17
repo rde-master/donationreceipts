@@ -37,6 +37,8 @@ use OCP\AppFramework\Db\Entity;
  * @method void setDoneBy(?string $uid)
  * @method int|null getDoneAt()
  * @method void setDoneAt(?int $timestamp)
+ * @method int|null getFiledAt()
+ * @method void setFiledAt(?int $timestamp)
  * @method int getCreatedAt()
  * @method void setCreatedAt(int $timestamp)
  */
@@ -60,6 +62,7 @@ class Reply extends Entity implements JsonSerializable {
     protected $note;
     protected $doneBy;
     protected $doneAt;
+    protected $filedAt;
     protected $createdAt;
 
     public function __construct() {
@@ -68,6 +71,7 @@ class Reply extends Entity implements JsonSerializable {
         $this->addType('campaignId', 'integer');
         $this->addType('receivedAt', 'integer');
         $this->addType('doneAt', 'integer');
+        $this->addType('filedAt', 'integer');
         $this->addType('createdAt', 'integer');
     }
 

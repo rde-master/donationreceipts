@@ -5,9 +5,10 @@ declare(strict_types=1);
 namespace OCA\DonationReceipts\Mail;
 
 /**
- * Minimal read-only IMAP client for fetching replies to sponsor letters:
- * login, EXAMINE (read-only, so the \Seen flags stay as they are), UID
- * SEARCH and UID FETCH of whole messages. Like StrictEsmtpTransport it
+ * Minimal IMAP client for replies to sponsor letters: login, EXAMINE
+ * (read-only, so the \Seen flags stay as they are), UID SEARCH and UID FETCH
+ * of whole messages; and for done replies SELECT, marking as read and
+ * moving to a folder (MOVE, or COPY + delete). Like StrictEsmtpTransport it
  * refuses unencrypted connections: TLS from the start (993) or STARTTLS
  * (143), with certificate verification.
  *
@@ -16,6 +17,8 @@ namespace OCA\DonationReceipts\Mail;
  */
 class ImapClient {
     private int $tag = 0;
+    /** @var list<string>|null upper case, from CAPABILITY */
+    private ?array $capabilities = null;
 
     /**
      * @param resource $stream
@@ -74,7 +77,7 @@ class ImapClient {
      */
     public function examine(string $folder): array {
         $result = ['uidValidity' => 0, 'uidNext' => 0, 'exists' => 0];
-        foreach ($this->command('EXAMINE', [mb_convert_encoding($folder, 'UTF7-IMAP', 'UTF-8')]) as $response) {
+        foreach ($this->command('EXAMINE', [self::folderName($folder)]) as $response) {
             $line = $response['line'];
             if (preg_match('/\[UIDVALIDITY (\d+)\]/i', $line, $m) === 1) {
                 $result['uidValidity'] = (int)$m[1];
@@ -129,6 +132,140 @@ class ImapClient {
         }
         sort($uids);
         return array_values(array_unique($uids));
+    }
+
+    /**
+     * Opens a folder for changes (marking read, moving).
+     *
+     * @throws ImapException
+     */
+    public function select(string $folder): void {
+        $this->command('SELECT', [self::folderName($folder)]);
+    }
+
+    /**
+     * UIDs of the messages with this Message-ID in the selected folder.
+     *
+     * @return list<int>
+     * @throws ImapException
+     */
+    public function uidsByMessageId(string $messageId): array {
+        $uids = [];
+        foreach ($this->command('UID SEARCH HEADER Message-ID', [$messageId]) as $response) {
+            if (preg_match('/^\* SEARCH\b(.*)$/i', $response['line'], $m) === 1) {
+                foreach (preg_split('/\s+/', trim($m[1])) ?: [] as $uid) {
+                    if ($uid !== '') {
+                        $uids[] = (int)$uid;
+                    }
+                }
+            }
+        }
+        return $uids;
+    }
+
+    /**
+     * Marks the messages as read and moves them to $folder (in the selected
+     * folder). Without MOVE: copy, flag \Deleted and, with UIDPLUS, expunge
+     * just these - never a plain EXPUNGE, which would remove other mails
+     * flagged as deleted.
+     *
+     * @param list<int> $uids
+     * @throws ImapException
+     */
+    public function markReadAndMove(array $uids, string $folder): void {
+        if ($uids === []) {
+            return;
+        }
+        $set = implode(',', array_map('intval', $uids));
+        $target = self::folderName($folder);
+        $this->command("UID STORE {$set} +FLAGS.SILENT (\\Seen)");
+        if ($this->hasCapability('MOVE')) {
+            $this->command("UID MOVE {$set}", [$target]);
+            return;
+        }
+        $this->command("UID COPY {$set}", [$target]);
+        $this->command("UID STORE {$set} +FLAGS.SILENT (\\Deleted)");
+        if ($this->hasCapability('UIDPLUS')) {
+            $this->command("UID EXPUNGE {$set}");
+        }
+    }
+
+    /**
+     * Makes sure the folder exists (creates and subscribes it). Some servers
+     * only allow folders below INBOX; then "INBOX<delimiter><name>" is used.
+     *
+     * @return string the folder name to use
+     * @throws ImapException
+     */
+    public function ensureFolder(string $folder): string {
+        if ($this->folderExists($folder)) {
+            return $folder;
+        }
+        try {
+            $this->command('CREATE', [self::folderName($folder)]);
+        } catch (ImapException $e) {
+            $delimiter = $this->delimiter();
+            if ($delimiter === null || str_starts_with(strtoupper($folder), 'INBOX' . $delimiter)) {
+                throw new ImapException("Der Ordner „{$folder}“ konnte nicht angelegt werden: " . $e->getMessage());
+            }
+            $nested = 'INBOX' . $delimiter . $folder;
+            if (!$this->folderExists($nested)) {
+                $this->command('CREATE', [self::folderName($nested)]);
+            }
+            $folder = $nested;
+        }
+        try {
+            $this->command('SUBSCRIBE', [self::folderName($folder)]);
+        } catch (ImapException) {
+            // only for the folder list of mail programs
+        }
+        return $folder;
+    }
+
+    /**
+     * @throws ImapException
+     */
+    private function folderExists(string $folder): bool {
+        foreach ($this->command('LIST', ['', self::folderName($folder)]) as $response) {
+            if (preg_match('/^\* LIST /i', $response['line']) === 1) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Hierarchy delimiter of the server, e.g. "." or "/".
+     *
+     * @throws ImapException
+     */
+    private function delimiter(): ?string {
+        foreach ($this->command('LIST', ['', '']) as $response) {
+            if (preg_match('/^\* LIST \([^)]*\) "(.)"/i', $response['line'], $m) === 1) {
+                return $m[1];
+            }
+        }
+        return null;
+    }
+
+    /**
+     * @throws ImapException
+     */
+    private function hasCapability(string $name): bool {
+        if ($this->capabilities === null) {
+            $this->capabilities = [];
+            foreach ($this->command('CAPABILITY') as $response) {
+                if (preg_match('/^\* CAPABILITY (.*)$/i', $response['line'], $m) === 1) {
+                    $this->capabilities = array_map('strtoupper', preg_split('/\s+/', trim($m[1])) ?: []);
+                }
+            }
+        }
+        return in_array(strtoupper($name), $this->capabilities, true);
+    }
+
+    /** Folder names are modified UTF-7 on the wire (RFC 3501). */
+    private static function folderName(string $folder): string {
+        return mb_convert_encoding($folder, 'UTF7-IMAP', 'UTF-8');
     }
 
     /**

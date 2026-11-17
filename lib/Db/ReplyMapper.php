@@ -27,6 +27,22 @@ class ReplyMapper extends QBMapper {
         return $this->findEntity($qb);
     }
 
+    /**
+     * Done replies still to be marked read and moved in the mailbox.
+     *
+     * @return list<Reply>
+     */
+    public function findUnfiled(int $limit): array {
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('*')
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq('status', $qb->createNamedParameter(Reply::STATUS_DONE)))
+            ->andWhere($qb->expr()->isNull('filed_at'))
+            ->orderBy('id', 'ASC')
+            ->setMaxResults($limit);
+        return $this->findEntities($qb);
+    }
+
     public function existsByMessageId(string $messageId): bool {
         $qb = $this->db->getQueryBuilder();
         $qb->select('id')

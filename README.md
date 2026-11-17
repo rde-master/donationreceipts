@@ -53,7 +53,9 @@ Der vollständige Plan steht in [docs/plan.md](docs/plan.md), die Änderungen je
   - **Zusagen**: Liste aller Zusagen mit Angaben, mit Filter und CSV-Export; Zusagen lassen
     sich auch manuell erfassen und bearbeiten. Absagen und offene Antworten stehen in der Aktion.
   - **E-Mail-Antworten**: Antwort-Mails auf Anschreiben werden per IMAP aus dem Postfach geholt (alle
-    10 Minuten, nur lesend) und als Aufgabe angezeigt, bis jemand sie als erledigt markiert.
+    10 Minuten) und als Aufgabe angezeigt, bis jemand sie als erledigt markiert. Wahlweise wird
+    eine erledigte Mail im Postfach als gelesen markiert und in einen Ordner („Bearbeitet“)
+    verschoben, sodass im Posteingang nur neue stehen.
   - **Spende eingegangen**: In der Aktion oder unter „Bescheinigungen“ bestätigt ein
     Gruppenmitglied Eingangsdatum und Betrag. Dann wird der Spender angelegt bzw. aktualisiert,
     die Bescheinigung mit Nummer und PDFs erzeugt und sofort per E-Mail versendet.

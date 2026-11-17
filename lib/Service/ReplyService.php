@@ -29,12 +29,16 @@ use Psr\Log\LoggerInterface;
  * a mail is kept if it answers one of our letters (Message-ID in
  * In-Reply-To/References) or comes from the address of a possible sponsor.
  * Every kept mail is a task ("open") until a group member marks it done.
+ * Optionally a done mail is then marked as read in the mailbox and moved
+ * to a folder ("Bearbeitet"), so the inbox only shows new mails.
  */
 class ReplyService {
     /** Mails per run; the rest follows in the next run. */
     private const MAX_PER_RUN = 100;
     private const MAX_MESSAGE_BYTES = 2 * 1024 * 1024;
     private const MAX_BODY_CHARS = 50000;
+    /** Done replies filed in the mailbox per run. */
+    private const MAX_FILE_PER_RUN = 50;
     /** First run (or rebuilt mailbox): mails of these last days are looked at. */
     private const FIRST_RUN_DAYS = 30;
 
@@ -140,7 +144,63 @@ class ReplyService {
         $reply->setNote(trim($note) === '' ? null : trim($note));
         $reply->setDoneBy($status === Reply::STATUS_DONE ? $uid : null);
         $reply->setDoneAt($status === Reply::STATUS_DONE ? $this->time->getTime() : null);
-        return $this->replies->update($reply);
+        $reply = $this->replies->update($reply);
+        if ($status === Reply::STATUS_DONE && $reply->getFiledAt() === null && $this->isFilingEnabled()) {
+            // right away; if the mailbox is not reachable, the next fetch does it
+            try {
+                $this->fileDone();
+            } catch (ImapException|ValidationException $e) {
+                $this->logger->warning('Filing done reply in the mailbox failed: ' . $e->getMessage());
+            }
+        }
+        return $reply;
+    }
+
+    /**
+     * Done replies are marked read and moved in the mailbox (setting).
+     */
+    public function isFilingEnabled(): bool {
+        return (bool)$this->settings->get('sponsor_imap_file_done')
+            && trim($this->settings->getString('sponsor_imap_done_folder')) !== ''
+            && $this->settings->missingForImap() === [];
+    }
+
+    /**
+     * Marks done replies as read in the mailbox and moves them to the
+     * "done" folder, found by their Message-ID in the fetched folder. A mail
+     * that is no longer there (moved by hand, or without Message-ID) counts
+     * as filed too.
+     *
+     * @return int replies filed
+     * @throws ImapException
+     */
+    public function fileDone(?ImapClient $client = null): int {
+        $pending = $this->replies->findUnfiled(self::MAX_FILE_PER_RUN);
+        if ($pending === []) {
+            return 0;
+        }
+        $account = $this->settings->imapAccount();
+        $own = $client === null;
+        $client ??= $this->openClient($account);
+        try {
+            $target = $client->ensureFolder(trim($this->settings->getString('sponsor_imap_done_folder')));
+            $client->select($account['folder']);
+            $filed = 0;
+            foreach ($pending as $reply) {
+                $messageId = $reply->getMessageId();
+                // made-up ids of mails without Message-ID cannot be searched
+                $uids = str_ends_with($messageId, '@donationreceipts>') ? [] : $client->uidsByMessageId($messageId);
+                $client->markReadAndMove($uids, $target);
+                $reply->setFiledAt($this->time->getTime());
+                $this->replies->update($reply);
+                $filed++;
+            }
+            return $filed;
+        } finally {
+            if ($own) {
+                $client->logout();
+            }
+        }
     }
 
     /**
@@ -167,6 +227,10 @@ class ReplyService {
         try {
             $client = $this->openClient($account);
             $folder = $client->examine($account['folder']);
+            if ($this->isFilingEnabled()) {
+                // creates the folder for done replies, if missing
+                $client->ensureFolder(trim($this->settings->getString('sponsor_imap_done_folder')));
+            }
             $client->logout();
             return $folder['exists'];
         } catch (ImapException $e) {
@@ -205,6 +269,10 @@ class ReplyService {
                     $new++;
                 }
                 $this->appConfig->setValueInt(Application::APP_ID, self::STATE_LAST_UID, $uid);
+            }
+            if ($this->isFilingEnabled()) {
+                // done replies (and auto-replies) out of the inbox
+                $this->fileDone($client);
             }
             $client->logout();
             $this->appConfig->setValueString(Application::APP_ID, self::STATE_LAST_ERROR, '');

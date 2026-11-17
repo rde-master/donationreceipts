@@ -213,8 +213,8 @@
 				<section>
 					<h3>Sponsoren-Anschreiben: Antworten abrufen (IMAP)</h3>
 					<p class="dr-muted">
-						Die App liest alle 10 Minuten neue Mails im Postfach der Anschreiben – nur lesend, Mails
-						bleiben unverändert und ungelesen. Übernommen werden Antworten auf Anschreiben und Mails von
+						Die App liest alle 10 Minuten neue Mails im Postfach der Anschreiben; dabei bleiben sie
+						unverändert und ungelesen. Übernommen werden Antworten auf Anschreiben und Mails von
 						Adressen möglicher Sponsoren; sie erscheinen unter „E-Mail-Antworten“ als Aufgabe und beim Sponsor in
 						der Aktion. Beim ersten Abruf werden die Mails der letzten 30 Tage berücksichtigt.
 					</p>
@@ -255,6 +255,22 @@
 							:placeholder="imapPasswordSet ? 'gespeichert – leer lassen zum Behalten' : 'leer = wie SMTP'" />
 					</div>
 					<NcTextField v-model="values.sponsor_imap_folder" label="Ordner" placeholder="INBOX" />
+					<NcCheckboxRadioSwitch v-model="values.sponsor_imap_file_done" type="switch">
+						Erledigte E-Mail-Antworten im Postfach als gelesen markieren und verschieben
+					</NcCheckboxRadioSwitch>
+					<template v-if="values.sponsor_imap_file_done">
+						<NcTextField v-model="values.sponsor_imap_done_folder"
+							label="Ordner für erledigte Mails"
+							placeholder="Bearbeitet"
+							helper-text="Wird angelegt, falls er fehlt (bei manchen Servern als Unterordner von INBOX)." />
+						<p class="dr-muted">
+							Sobald eine Antwort unter „E-Mail-Antworten“ erledigt ist, wird die Mail im Postfach als
+							gelesen markiert und in diesen Ordner verschoben – im Posteingang bleiben nur neue.
+							Automatische Antworten (Abwesenheitsnotizen) ebenso. Ist das Postfach gerade nicht
+							erreichbar, holt der nächste Abruf das nach. Wird eine Antwort wieder geöffnet, bleibt die
+							Mail im Ordner.
+						</p>
+					</template>
 					<div class="dr-row">
 						<NcButton :disabled="testing" @click="testImapConnection">
 							Speichern und Verbindung testen

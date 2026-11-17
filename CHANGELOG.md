@@ -4,6 +4,18 @@ Alle Änderungen der App, neueste zuerst. Versionen nach [SemVer](https://semver
 Fehlerbehebung erhöht die dritte Stelle, neue Funktionen die zweite, mit der Abnahme kommt 1.0.0.
 Jede Version hat einen Git-Tag `v<version>`.
 
+## 0.21.0 – 2026-11-17
+
+- **Erledigte E-Mail-Antworten aus dem Posteingang** (Einstellungen → Mail Sponsoren, abschaltbar,
+  standardmäßig aus): Wird eine Antwort erledigt – von Hand, über „Status / Rückmeldung“ oder als
+  automatische Antwort –, markiert die App die Mail im Postfach als gelesen und verschiebt sie in
+  einen Ordner (Standard „Bearbeitet“, wird bei Bedarf angelegt, ggf. unter INBOX). Gefunden wird
+  die Mail über ihre Message-ID, also auch für schon vorhandene Antworten. Ist das Postfach gerade
+  nicht erreichbar, holt der nächste Abruf es nach (bis zu 50 je Lauf). Server ohne IMAP-MOVE:
+  Kopieren und nur genau diese Mails löschen.
+- „Verbindung testen“ prüft bei eingeschalteter Funktion auch den Zielordner.
+- Neue Spalte `dr_replies.filed_at` (`occ upgrade`).
+
 ## 0.20.1 – 2026-11-17
 
 - Behoben: Die PDF-Vorschau blieb leer („darf diese eingebettete Seite nicht öffnen“) – Nextcloud
