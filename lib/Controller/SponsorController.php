@@ -96,6 +96,20 @@ class SponsorController extends Controller {
         return new JSONResponse($this->sponsors->importDonors(array_map('intval', $donorIds), $this->uid()));
     }
 
+    /**
+     * CSV import of possible sponsors; dryRun = preview only.
+     *
+     * @param list<mixed> $rows
+     */
+    #[NoAdminRequired]
+    public function importCsv(array $rows, bool $dryRun = true): JSONResponse {
+        try {
+            return new JSONResponse(['results' => $this->sponsors->importRows($rows, $dryRun, $this->uid())]);
+        } catch (ValidationException $e) {
+            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
+        }
+    }
+
     private function uid(): string {
         return $this->userSession->getUser()?->getUID() ?? '';
     }

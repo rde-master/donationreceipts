@@ -20,6 +20,7 @@ use OCP\Mail\IMailer;
  */
 class SponsorService {
     private const FIELDS = ['name', 'contact', 'salutation', 'email', 'notes'];
+    private const MAX_IMPORT_ROWS = 2000;
 
     public function __construct(
         private SponsorMapper $mapper,
@@ -139,6 +140,49 @@ class SponsorService {
             ], $uid);
         }
         return $created;
+    }
+
+    /**
+     * CSV import (rows already split by the browser). Each row is checked
+     * like the form; a row whose e-mail address is already known (in the
+     * list or earlier in the file) is skipped. With $dryRun nothing is
+     * saved - the result is the preview.
+     *
+     * @param list<mixed> $rows {line, name, contact, salutation, email, notes, noContact}
+     * @return list<array{line: int, name: string, email: string, status: 'new'|'created'|'duplicate'|'error', error: string|null}>
+     * @throws ValidationException too many rows
+     */
+    public function importRows(array $rows, bool $dryRun, string $uid): array {
+        if (count($rows) > self::MAX_IMPORT_ROWS) {
+            throw new ValidationException('Höchstens ' . self::MAX_IMPORT_ROWS . ' Zeilen auf einmal');
+        }
+        $results = [];
+        $seen = [];
+        foreach ($rows as $index => $row) {
+            $row = is_array($row) ? $row : [];
+            $line = is_int($row['line'] ?? null) ? $row['line'] : $index + 2;
+            $data = ['donorId' => null, 'noContact' => ($row['noContact'] ?? false) === true];
+            foreach (self::FIELDS as $field) {
+                $data[$field] = is_string($row[$field] ?? null) ? $row[$field] : '';
+            }
+            $email = mb_strtolower(trim($data['email']));
+            $result = ['line' => $line, 'name' => trim($data['name']), 'email' => trim($data['email']), 'status' => 'new', 'error' => null];
+            try {
+                $this->apply(new Sponsor(), $data);
+                if (isset($seen[$email]) || $this->mapper->findByEmail($email) !== []) {
+                    $result['status'] = 'duplicate';
+                } elseif (!$dryRun) {
+                    $this->create($data, $uid);
+                    $result['status'] = 'created';
+                }
+                $seen[$email] = true;
+            } catch (ValidationException $e) {
+                $result['status'] = 'error';
+                $result['error'] = $e->getMessage();
+            }
+            $results[] = $result;
+        }
+        return $results;
     }
 
     /**

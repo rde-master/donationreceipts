@@ -4,6 +4,17 @@ Alle Änderungen der App, neueste zuerst. Versionen nach [SemVer](https://semver
 Fehlerbehebung erhöht die dritte Stelle, neue Funktionen die zweite, mit der Abnahme kommt 1.0.0.
 Jede Version hat einen Git-Tag `v<version>`.
 
+## 0.16.0 – 2026-11-17
+
+- **CSV-Import für mögliche Sponsoren** („CSV importieren“ in der Liste) mit **Muster-CSV zum
+  Herunterladen**. Spalten: Name und E-Mail (Pflicht), Ansprechpartner, Briefanrede, Notiz, „Nicht
+  mehr anschreiben“ (ja/x); gängige andere Spaltennamen (Firma, Email, Anrede, Bemerkung …) werden
+  erkannt, unbekannte angezeigt und ignoriert. Semikolon, Komma oder Tab; UTF-8 oder
+  Excel-/Windows-Zeichensatz.
+- Vor dem Import eine **Vorschau** je Zeile (mit Zeilennummer wie in Excel): wird angelegt, schon
+  vorhanden (gleiche E-Mail – auch doppelt in der Datei) oder Fehler mit Grund. Nur neue Zeilen
+  werden angelegt; geprüft wird wie im Formular. Höchstens 2000 Zeilen je Import.
+
 ## 0.15.0 – 2026-11-17
 
 - **Antwortmöglichkeiten im Rückmeldeformular anpassbar** (Einstellungen → Rückmeldeformular):

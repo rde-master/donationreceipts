@@ -37,6 +37,7 @@ return [
         ['name' => 'sponsor#index', 'url' => '/api/sponsors', 'verb' => 'GET'],
         ['name' => 'sponsor#create', 'url' => '/api/sponsors', 'verb' => 'POST'],
         ['name' => 'sponsor#import', 'url' => '/api/sponsors/import', 'verb' => 'POST'],
+        ['name' => 'sponsor#importCsv', 'url' => '/api/sponsors/import-csv', 'verb' => 'POST'],
         ['name' => 'sponsor#overview', 'url' => '/api/sponsors/overview', 'verb' => 'GET'],
         ['name' => 'sponsor#show', 'url' => '/api/sponsors/{id}', 'verb' => 'GET', 'requirements' => ['id' => '\d+']],
         ['name' => 'sponsor#update', 'url' => '/api/sponsors/{id}', 'verb' => 'PUT', 'requirements' => ['id' => '\d+']],

@@ -243,3 +243,10 @@ export async function sendReminders(campaignId, sponsorIds) {
 export async function getSponsorOverview() {
 	return (await axios.get(base('/sponsors/overview'))).data
 }
+
+/**
+ * CSV import of possible sponsors; dryRun = only check (preview).
+ */
+export async function importSponsorRows(rows, dryRun) {
+	return (await axios.post(base('/sponsors/import-csv'), { rows, dryRun })).data.results
+}

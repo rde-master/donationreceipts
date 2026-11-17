@@ -3,6 +3,12 @@
 		<div class="dr-header">
 			<h2>Mögliche Sponsoren</h2>
 			<div class="dr-actions">
+				<NcButton @click="csvOpen = true">
+					<template #icon>
+						<NcIconSvgWrapper :path="mdiFileDelimitedOutline" />
+					</template>
+					CSV importieren
+				</NcButton>
 				<NcButton @click="openImport">
 					<template #icon>
 						<NcIconSvgWrapper :path="mdiAccountArrowRightOutline" />
@@ -131,6 +137,10 @@
 			</tbody>
 		</table>
 
+		<SponsorCsvDialog v-if="csvOpen"
+			@imported="load"
+			@close="csvOpen = false" />
+
 		<NcDialog v-if="importOpen"
 			name="Spender als mögliche Sponsoren übernehmen"
 			size="normal"
@@ -170,7 +180,7 @@
 </template>
 
 <script setup>
-import { mdiAccountArrowRightOutline, mdiHandshakeOutline, mdiPlus } from '@mdi/js'
+import { mdiAccountArrowRightOutline, mdiFileDelimitedOutline, mdiHandshakeOutline, mdiPlus } from '@mdi/js'
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwitch'
@@ -183,6 +193,7 @@ import NcTextField from '@nextcloud/vue/components/NcTextField'
 import { computed, onMounted, ref } from 'vue'
 import { errorMessage, getSponsorOverview, importSponsors, listDonors, listSponsors } from '../api.js'
 import StatTile from '../components/charts/StatTile.vue'
+import SponsorCsvDialog from '../components/SponsorCsvDialog.vue'
 import { formatAmount } from '../format.js'
 import { STATES } from '../outcome.js'
 
@@ -208,6 +219,7 @@ const filter = ref(FILTERS[0])
 const loading = ref(true)
 const search = ref('')
 const importOpen = ref(false)
+const csvOpen = ref(false)
 const importable = ref(null)
 const selected = ref([])
 const importing = ref(false)
