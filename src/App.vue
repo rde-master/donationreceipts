@@ -23,12 +23,12 @@
 						<NcIconSvgWrapper :path="mdiBullhornOutline" />
 					</template>
 				</NcAppNavigationItem>
-				<NcAppNavigationItem name="Rückmeldungen" :to="{ name: 'responses' }">
+				<NcAppNavigationItem name="Zusagen" :to="{ name: 'responses' }">
 					<template #icon>
 						<NcIconSvgWrapper :path="mdiClipboardTextOutline" />
 					</template>
 				</NcAppNavigationItem>
-				<NcAppNavigationItem name="Antworten" :to="{ name: 'replies' }">
+				<NcAppNavigationItem name="E-Mail-Antworten" :to="{ name: 'replies' }">
 					<template #icon>
 						<NcIconSvgWrapper :path="mdiEmailArrowLeftOutline" />
 					</template>

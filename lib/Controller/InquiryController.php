@@ -61,7 +61,7 @@ class InquiryController extends Controller {
     }
 
     /**
-     * All responses (optionally of one campaign) for the list and the export.
+     * All pledges (optionally of one campaign) for the list "Zusagen" and the export.
      */
     #[NoAdminRequired]
     public function responses(?int $campaignId = null): JSONResponse {

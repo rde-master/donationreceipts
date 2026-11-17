@@ -4,6 +4,13 @@ Alle Änderungen der App, neueste zuerst. Versionen nach [SemVer](https://semver
 Fehlerbehebung erhöht die dritte Stelle, neue Funktionen die zweite, mit der Abnahme kommt 1.0.0.
 Jede Version hat einen Git-Tag `v<version>`.
 
+## 0.17.1 – 2026-11-17
+
+- Menü: „Rückmeldungen“ heißt jetzt **„Zusagen“**, „Antworten“ heißt **„E-Mail-Antworten“**
+  (auch die Seitentitel; CSV-Export als `Zusagen….csv`).
+- Behoben: Eine Zusage, die später zur Absage wurde („diesmal nicht“), stand weiter in der Liste
+  der Zusagen und im Export.
+
 ## 0.17.0 – 2026-11-17
 
 - **Einstellungen in Reitern**: Verein & Steuer (inkl. Unterschrift und Stempel) · Mail

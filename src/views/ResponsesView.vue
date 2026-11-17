@@ -1,7 +1,7 @@
 <template>
 	<div class="dr-page dr-page--wide">
 		<div class="dr-header">
-			<h2>Rückmeldungen</h2>
+			<h2>Zusagen</h2>
 			<NcButton :disabled="!filtered.length" @click="exportCsv">
 				<template #icon>
 					<NcIconSvgWrapper :path="mdiDownload" />
@@ -25,8 +25,8 @@
 
 		<NcLoadingIcon v-if="loading" :size="32" />
 		<NcEmptyContent v-else-if="!filtered.length"
-			name="Keine Rückmeldungen"
-			description="Rückmeldungen kommen über das Formular oder werden in der Aktion manuell erfasst.">
+			name="Keine Zusagen"
+			description="Zusagen kommen über das Rückmeldeformular oder werden in der Aktion manuell erfasst. Absagen und offene Antworten stehen in der Aktion.">
 			<template #icon>
 				<NcIconSvgWrapper :path="mdiClipboardTextOutline" />
 			</template>
@@ -88,7 +88,7 @@
 				</tbody>
 			</table>
 			<p class="dr-muted dr-sum">
-				{{ filtered.length }} Rückmeldungen · zugesagt {{ formatAmount(sum) }} · Freikarten {{ tickets }}
+				{{ filtered.length }} Zusagen · zugesagt {{ formatAmount(sum) }} · Freikarten {{ tickets }}
 			</p>
 		</template>
 
@@ -188,7 +188,7 @@ function exportCsv() {
 	const csv = '﻿' + [header, ...rows].map((row) => row.map(quote).join(';')).join('\r\n')
 	const link = document.createElement('a')
 	link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
-	link.download = `Rueckmeldungen${campaign.value.id ? '_' + campaign.value.name.replace(/[^\wäöüÄÖÜß-]+/g, '_') : ''}.csv`
+	link.download = `Zusagen${campaign.value.id ? '_' + campaign.value.name.replace(/[^\wäöüÄÖÜß-]+/g, '_') : ''}.csv`
 	link.click()
 	URL.revokeObjectURL(link.href)
 }

@@ -761,7 +761,9 @@ class InquiryService {
      * @return list<Inquiry>
      */
     public function responses(?int $campaignId = null): array {
-        return $this->inquiries->findResponses($campaignId);
+        // pledges only: a pledge withdrawn later ("diesmal nicht") is left out
+        return array_values(array_filter($this->inquiries->findResponses($campaignId),
+            static fn (Inquiry $i): bool => $i->isPledged() || $i->isReceived()));
     }
 
     /**

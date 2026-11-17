@@ -50,9 +50,9 @@ Der vollständige Plan steht in [docs/plan.md](docs/plan.md), die Änderungen je
   - Nach einer Rückmeldung: Benachrichtigung (Glocke und, abschaltbar, E-Mail) an alle
     Gruppenmitglieder und Bestätigungsmail an den Sponsor (eigene Vorlage, `{angaben}` fasst die
     Rückmeldung zusammen).
-  - **Rückmeldungen**: Liste aller Rückmeldungen mit Filter und CSV-Export; Rückmeldungen lassen
-    sich auch manuell erfassen und bearbeiten.
-  - **Antworten**: Antwort-Mails auf Anschreiben werden per IMAP aus dem Postfach geholt (alle
+  - **Zusagen**: Liste aller Zusagen mit Angaben, mit Filter und CSV-Export; Zusagen lassen
+    sich auch manuell erfassen und bearbeiten. Absagen und offene Antworten stehen in der Aktion.
+  - **E-Mail-Antworten**: Antwort-Mails auf Anschreiben werden per IMAP aus dem Postfach geholt (alle
     10 Minuten, nur lesend) und als Aufgabe angezeigt, bis jemand sie als erledigt markiert.
   - **Spende eingegangen**: In der Aktion oder unter „Bescheinigungen“ bestätigt ein
     Gruppenmitglied Eingangsdatum und Betrag. Dann wird der Spender angelegt bzw. aktualisiert,

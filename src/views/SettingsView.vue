@@ -215,7 +215,7 @@
 					<p class="dr-muted">
 						Die App liest alle 10 Minuten neue Mails im Postfach der Anschreiben – nur lesend, Mails
 						bleiben unverändert und ungelesen. Übernommen werden Antworten auf Anschreiben und Mails von
-						Adressen möglicher Sponsoren; sie erscheinen unter „Antworten“ als Aufgabe und beim Sponsor in
+						Adressen möglicher Sponsoren; sie erscheinen unter „E-Mail-Antworten“ als Aufgabe und beim Sponsor in
 						der Aktion. Beim ersten Abruf werden die Mails der letzten 30 Tage berücksichtigt.
 					</p>
 					<NcCheckboxRadioSwitch v-model="values.sponsor_imap_enabled" type="switch">

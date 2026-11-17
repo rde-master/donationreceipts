@@ -1,7 +1,7 @@
 <template>
 	<div class="dr-page">
 		<div class="dr-header">
-			<h2>Antworten</h2>
+			<h2>E-Mail-Antworten</h2>
 			<NcButton :disabled="fetching || !enabled" @click="fetchNow">
 				<template #icon>
 					<NcLoadingIcon v-if="fetching" :size="20" />
@@ -38,7 +38,7 @@
 
 		<NcLoadingIcon v-if="loading" :size="32" />
 		<NcEmptyContent v-else-if="!replies.length"
-			:name="status.id === 'open' ? 'Keine offenen Antworten' : 'Keine Antworten'"
+			:name="status.id === 'open' ? 'Keine offenen E-Mail-Antworten' : 'Keine E-Mail-Antworten'"
 			description="Neue Antworten erscheinen hier nach dem nächsten Abruf (alle 10 Minuten).">
 			<template #icon>
 				<NcIconSvgWrapper :path="mdiEmailCheckOutline" />
