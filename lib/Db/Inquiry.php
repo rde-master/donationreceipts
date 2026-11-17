@@ -58,6 +58,8 @@ use OCP\AppFramework\Db\Entity;
  * @method void setLogoFileId(?int $id)
  * @method string|null getRemarks()
  * @method void setRemarks(?string $remarks)
+ * @method string|null getReceiptEmail()
+ * @method void setReceiptEmail(?string $email)
  * @method string|null getResponseBy()
  * @method void setResponseBy(?string $uid)
  * @method int|null getReceiptId()
@@ -100,6 +102,7 @@ class Inquiry extends Entity implements JsonSerializable {
     protected $publish;
     protected $logoFileId;
     protected $remarks;
+    protected $receiptEmail;
     protected $responseBy;
     protected $receiptId;
     protected $createdBy;
@@ -168,6 +171,8 @@ class Inquiry extends Entity implements JsonSerializable {
             'tickets' => $this->tickets ?? '',
             'publish' => $this->hasResponse() ? (bool)$this->publish : null,
             'remarks' => $this->remarks ?? '',
+            // where the receipt goes; '' = the donor's or sponsor's address
+            'receiptEmail' => $this->receiptEmail ?? '',
         ];
     }
 

@@ -20,6 +20,7 @@ use OCA\DonationReceipts\Mail\SmtpSender;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IURLGenerator;
+use OCP\Mail\IMailer;
 use OCP\Security\ISecureRandom;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Mime\Email;
@@ -50,7 +51,7 @@ class InquiryService {
     private const TEXT_FIELDS = [
         'firstName' => 128, 'lastName' => 128, 'company' => 255,
         'street' => 255, 'zip' => 16, 'city' => 128, 'country' => 64,
-        'goodsDescription' => 2000, 'remarks' => 2000,
+        'goodsDescription' => 2000, 'remarks' => 2000, 'receiptEmail' => 255,
     ];
 
     /** Highest amount accepted from the public form: 10 million euros. */
@@ -70,6 +71,7 @@ class InquiryService {
         private SmtpSender $sender,
         private GroupNotifier $groupNotifier,
         private IURLGenerator $urlGenerator,
+        private IMailer $mailer,
         private ISecureRandom $random,
         private ITimeFactory $time,
         private LoggerInterface $logger,
@@ -238,6 +240,10 @@ class InquiryService {
         $campaign = $this->campaigns->find($inquiry->getCampaignId());
         $sponsor = $this->sponsors->find($inquiry->getSponsorId());
         $values = SponsorTemplate::values($sponsor, $campaign, $this->link($inquiry), $this->settings->getString('org_name'));
+        $response = $inquiry->hasResponse() ? $inquiry->responseData() : $this->prefill($sponsor);
+        if ($response['receiptEmail'] === '') {
+            $response['receiptEmail'] = $this->defaultReceiptEmail($sponsor);
+        }
         return [
             'org' => $this->settings->getString('org_name'),
             'campaign' => $campaign->getName(),
@@ -247,7 +253,7 @@ class InquiryService {
             'received' => $inquiry->isReceived(),
             'editable' => $this->isEditable($inquiry, $campaign),
             'respondedAt' => $inquiry->getRespondedAt(),
-            'response' => $inquiry->hasResponse() ? $inquiry->responseData() : $this->prefill($sponsor),
+            'response' => $response,
             'logoUpload' => $this->logoUploadPossible($inquiry),
             'hasLogo' => $inquiry->getLogoFileId() !== null,
             'tickets' => SponsorTemplate::TICKET_LABELS,
@@ -409,7 +415,7 @@ class InquiryService {
 
         $mailError = null;
         try {
-            $to = trim((string)$donor->getEmail()) !== '' ? (string)$donor->getEmail() : $sponsor->getEmail();
+            $to = $this->receiptRecipient($inquiry, $donor, $sponsor);
             $template = $this->mailService->templates();
             $receipt = $this->mailService->sendReceipt($receipt, $to, $template['subject'], $template['body']);
         } catch (ValidationException $e) {
@@ -472,7 +478,36 @@ class InquiryService {
             'tickets' => '',
             'publish' => null,
             'remarks' => '',
+            'receiptEmail' => $this->defaultReceiptEmail($sponsor, $donor),
         ];
+    }
+
+    /**
+     * Prefill of "Spendenbescheinigung senden an": the linked donor's
+     * address, otherwise the sponsor's.
+     */
+    private function defaultReceiptEmail(Sponsor $sponsor, ?Donor $donor = null): string {
+        if ($donor === null && $sponsor->getDonorId() !== null) {
+            try {
+                $donor = $this->donorMapper->find($sponsor->getDonorId());
+            } catch (DoesNotExistException) {
+            }
+        }
+        $email = $donor !== null ? trim((string)$donor->getEmail()) : '';
+        return $email !== '' ? $email : $sponsor->getEmail();
+    }
+
+    /**
+     * Where the receipt goes: the address from the response, otherwise the
+     * donor's, otherwise the sponsor's.
+     */
+    private function receiptRecipient(Inquiry $inquiry, Donor $donor, Sponsor $sponsor): string {
+        foreach ([$inquiry->getReceiptEmail(), $donor->getEmail()] as $email) {
+            if (trim((string)$email) !== '') {
+                return trim((string)$email);
+            }
+        }
+        return $sponsor->getEmail();
     }
 
     /**
@@ -510,6 +545,10 @@ class InquiryService {
         }
         if ($text['street'] === null || $text['zip'] === null || $text['city'] === null) {
             throw new ValidationException('Bitte die vollständige Anschrift angeben – sie steht auf der Zuwendungsbestätigung');
+        }
+
+        if ($text['receiptEmail'] !== null && !$this->mailer->validateMailAddress($text['receiptEmail'])) {
+            throw new ValidationException('Bitte eine gültige E-Mail-Adresse für die Zuwendungsbestätigung angeben');
         }
 
         $type = $data['type'] ?? null;
@@ -587,7 +626,7 @@ class InquiryService {
         $donorId = $data['donorId'] ?? null;
         if ($donorId === null) {
             return $this->donorService->create($inquiry->donorData() + [
-                'email' => $sponsor->getEmail(),
+                'email' => $inquiry->getReceiptEmail() ?? $sponsor->getEmail(),
                 'notes' => '',
             ], $uid);
         }
@@ -600,7 +639,7 @@ class InquiryService {
         }
         $current = $donor->jsonSerialize();
         return $this->donorService->update($donorId, $inquiry->donorData() + [
-            'email' => $current['email'] !== '' ? $current['email'] : $sponsor->getEmail(),
+            'email' => $inquiry->getReceiptEmail() ?? ($current['email'] !== '' ? $current['email'] : $sponsor->getEmail()),
             'notes' => $current['notes'],
         ]);
     }

@@ -24,6 +24,8 @@
 						</div>
 					</template>
 				</dd>
+				<dt>Bescheinigung senden an</dt>
+				<dd>{{ response.receiptEmail || 'Adresse des Spenders bzw. Sponsors' }}</dd>
 				<dt>Freikarten</dt>
 				<dd>{{ ticketLabels[response.tickets] }}</dd>
 				<dt>Öffentlich bekannt geben</dt>

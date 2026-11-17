@@ -104,6 +104,10 @@ class SponsorTemplate {
             $lines[] = 'Geldspende: ' . $amount;
         }
         $lines[] = 'Freikarten: ' . (self::TICKET_LABELS[$inquiry->getTickets()] ?? '–');
+        $receiptEmail = trim((string)$inquiry->getReceiptEmail());
+        if ($receiptEmail !== '') {
+            $lines[] = 'Zuwendungsbestätigung an: ' . $receiptEmail;
+        }
         $lines[] = 'Öffentlich bekannt geben (Logo auf Plakaten): ' . ($inquiry->getPublish() ? 'Ja' : 'Nein');
         $remarks = trim((string)$inquiry->getRemarks());
         if ($remarks !== '') {

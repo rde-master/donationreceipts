@@ -156,13 +156,14 @@ async function load() {
  * Semicolon-separated with BOM, so Excel opens it with umlauts and German decimals.
  */
 function exportCsv() {
-	const header = ['Name', 'Möglicher Sponsor', 'E-Mail', 'Aktion', 'Rückmeldung am', 'Erfasst', 'Art', 'Betrag/Wert',
+	const header = ['Name', 'Möglicher Sponsor', 'E-Mail', 'Bescheinigung an', 'Aktion', 'Rückmeldung am', 'Erfasst', 'Art', 'Betrag/Wert',
 		'Sachspende', 'Freikarten', 'Anzahl Freikarten', 'Öffentlich (Logo)', 'Logo liegt vor', 'Hinweis',
 		'Straße', 'PLZ', 'Ort', 'Land', 'Status']
 	const rows = filtered.value.map((i) => [
 		i.response.displayName,
 		i.sponsor?.name ?? '',
 		i.sponsor?.email ?? '',
+		i.response.receiptEmail || (i.sponsor?.email ?? ''),
 		i.campaignName,
 		formatDateTime(i.respondedAt),
 		i.responseBy ? `manuell (${i.responseBy})` : 'Formular',

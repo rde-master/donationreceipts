@@ -51,7 +51,8 @@ const props = defineProps({
 const emit = defineEmits(['close', 'saved'])
 
 // a new response starts with the sponsor's name as company
-const form = ref(responseForm(props.inquiry?.response ?? { kind: 'company', company: props.sponsor.name }))
+// and the sponsor's address as receipt address
+const form = ref(responseForm(props.inquiry?.response ?? { kind: 'company', company: props.sponsor.name }, props.sponsor.email))
 const sendConfirmation = ref(false)
 const saving = ref(false)
 const error = ref('')

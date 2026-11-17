@@ -30,6 +30,11 @@
 				<NcTextField v-model="form.city" label="Ort" required />
 			</div>
 			<NcTextField v-model="form.country" label="Land (leer = Deutschland)" />
+			<NcTextField v-model="form.receiptEmail"
+				type="email"
+				label="Spendenbescheinigung senden an (E-Mail)"
+				autocomplete="email"
+				required />
 		</section>
 
 		<section>

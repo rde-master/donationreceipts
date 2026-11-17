@@ -6,9 +6,10 @@ import { amountForInput, parseAmount } from './format.js'
 
 /**
  * @param {object} response response fields as the server sends them
+ * @param {string} defaultEmail receipt address when the response has none
  * @return {object} form state for ResponseFields
  */
-export function responseForm(response) {
+export function responseForm(response, defaultEmail = '') {
 	return {
 		kind: response.kind || 'company',
 		firstName: response.firstName ?? '',
@@ -25,6 +26,7 @@ export function responseForm(response) {
 		tickets: response.tickets ?? '',
 		publish: response.publish === null || response.publish === undefined ? '' : (response.publish ? 'yes' : 'no'),
 		remarks: response.remarks ?? '',
+		receiptEmail: response.receiptEmail || defaultEmail,
 	}
 }
 
@@ -64,6 +66,9 @@ export function responseMissing(form) {
 	}
 	if (blank(form.city)) {
 		missing.push('Ort')
+	}
+	if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.receiptEmail.trim())) {
+		missing.push('E-Mail für die Bescheinigung')
 	}
 	if (parseAmount(form.amountText) === null) {
 		missing.push('Betrag')

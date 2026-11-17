@@ -4,6 +4,16 @@ Alle Änderungen der App, neueste zuerst. Versionen nach [SemVer](https://semver
 Fehlerbehebung erhöht die dritte Stelle, neue Funktionen die zweite, mit der Abnahme kommt 1.0.0.
 Jede Version hat einen Git-Tag `v<version>`.
 
+## 0.11.0 – 2026-11-17
+
+- Neues Feld **„Spendenbescheinigung senden an (E-Mail)“** im Rückmeldeformular und in der
+  manuellen Erfassung. Vorbelegt mit der Adresse des verknüpften Spenders bzw. des möglichen
+  Sponsors, änderbar. Die Zuwendungsbestätigung geht nach dem Spendeneingang an diese Adresse;
+  ein neu angelegter (oder aktualisierter) Spender erhält sie als E-Mail-Adresse.
+- Die Adresse steht in der Rückmeldung, in der Bestätigungsmail an den Sponsor und im CSV-Export
+  („Bescheinigung an“).
+- Neue Spalte `dr_inquiries.receipt_email` (`occ upgrade`).
+
 ## 0.10.2 – 2026-11-17
 
 - Behoben: Die Absenden-Leiste des Rückmeldeformulars verdeckte das letzte Eingabefeld. Sie hat

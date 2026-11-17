@@ -25,6 +25,7 @@ use OCA\DonationReceipts\Service\SponsorService;
 use OCA\DonationReceipts\Service\StorageService;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IURLGenerator;
+use OCP\Mail\IMailer;
 use OCP\Security\ISecureRandom;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -102,6 +103,8 @@ class InquiryServiceTest extends TestCase {
         );
         $random = $this->createMock(ISecureRandom::class);
         $random->method('generate')->willReturn('NEWTOKEN000000000000000000000000');
+        $mailer = $this->createMock(IMailer::class);
+        $mailer->method('validateMailAddress')->willReturnCallback(static fn (string $email): bool => str_contains($email, '@'));
         $time = $this->createMock(ITimeFactory::class);
         $time->method('getTime')->willReturn(1_800_000_000);
 
@@ -109,7 +112,7 @@ class InquiryServiceTest extends TestCase {
             $this->inquiries, $campaigns, $sponsors, $this->createMock(DonorMapper::class),
             $this->sponsorService, $this->donorService, $this->receiptService, $this->mailService,
             $this->settings, $this->createMock(StorageService::class),
-            $this->sender, $this->groupNotifier, $urls, $random, $time, $this->createMock(LoggerInterface::class),
+            $this->sender, $this->groupNotifier, $urls, $mailer, $random, $time, $this->createMock(LoggerInterface::class),
         );
     }
 
@@ -247,6 +250,33 @@ class InquiryServiceTest extends TestCase {
 
         $this->assertSame(77, $this->inquiry->getReceiptId());
         $this->assertNull($result['mailError']);
+    }
+
+    public function testPublicViewPrefillsReceiptEmailWithSponsorAddress(): void {
+        $this->assertSame('korn@example.org', $this->service->publicView(self::TOKEN)['response']['receiptEmail']);
+    }
+
+    public function testRespondRejectsInvalidReceiptEmail(): void {
+        $this->expectException(ValidationException::class);
+        $this->expectExceptionMessage('E-Mail-Adresse');
+        $this->service->respond(self::TOKEN, ['receiptEmail' => 'keine-adresse'] + self::RESPONSE, null);
+    }
+
+    public function testReceiveSendsReceiptToAddressFromResponse(): void {
+        $this->service->respond(self::TOKEN, ['receiptEmail' => ' buchhaltung@korn.example '] + self::RESPONSE, null);
+        $donor = new Donor();
+        $donor->setId(12);
+        $donor->setEmail('buchhaltung@korn.example');
+        $this->donorService->expects($this->once())->method('create')
+            ->with($this->callback(static fn (array $data) => $data['email'] === 'buchhaltung@korn.example'), 'kasse')
+            ->willReturn($donor);
+        $receipt = new Receipt();
+        $receipt->setId(77);
+        $this->receiptService->method('create')->willReturn($receipt);
+        $this->mailService->method('templates')->willReturn(['subject' => 'S', 'body' => 'B']);
+        $this->mailService->expects($this->once())->method('sendReceipt')->with($receipt, 'buchhaltung@korn.example', 'S', 'B')->willReturn($receipt);
+
+        $this->service->receive(5, ['donorId' => null, 'type' => 'money'], 'kasse');
     }
 
     public function testReceiveKeepsReceiptWhenMailFails(): void {
