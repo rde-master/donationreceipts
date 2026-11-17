@@ -4,6 +4,18 @@ Alle Änderungen der App, neueste zuerst. Versionen nach [SemVer](https://semver
 Fehlerbehebung erhöht die dritte Stelle, neue Funktionen die zweite, mit der Abnahme kommt 1.0.0.
 Jede Version hat einen Git-Tag `v<version>`.
 
+## 0.14.0 – 2026-11-17
+
+- **Mögliche Sponsoren**: Die Liste zeigt je Sponsor die **letzte Rückmeldung** (Status, Aktion mit
+  Link, Datum, zugesagter Betrag, Nachricht bei einer Absage) und die **Spenden** (Summe, wie oft
+  gespendet von wie vielen Anfragen).
+- **Filter** nach letzter Rückmeldung: noch nie angeschrieben, ohne Antwort, Antwort per Mail,
+  Zusage offen, Angaben fehlen, zuletzt gespendet, zuletzt abgesagt, nicht mehr anschreiben,
+  hat schon gespendet, angeschrieben aber noch nie gespendet, Versand fehlgeschlagen. Die Suche
+  wirkt zusammen mit dem Filter.
+- **Kleine Übersicht** über der Liste: Sponsoren gesamt, haben schon gespendet (mit Summe), Zusagen
+  offen, ohne Antwort, zuletzt abgesagt – ein Klick auf eine Kachel setzt den passenden Filter.
+
 ## 0.13.0 – 2026-11-17
 
 - **Absage im Rückmeldeformular**: Sponsoren wählen oben „Ja, wir unterstützen …“, „Diesmal leider

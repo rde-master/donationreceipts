@@ -486,4 +486,34 @@ class InquiryServiceTest extends TestCase {
 
         $this->assertStringContainsString('keine Erinnerung', $results[0]['error']);
     }
+
+    public function testSponsorHistoryShowsLatestStateAndDonations(): void {
+        $old = new Inquiry();
+        $old->setId(1);
+        $old->setSponsorId(9);
+        $old->setCampaignId(2);
+        $old->setCreatedAt(100);
+        $old->setSentAt(100);
+        $old->setRespondedAt(150);
+        $old->setAmountCents(20000);
+        $old->setReceiptId(7);
+        $new = new Inquiry();
+        $new->setId(2);
+        $new->setSponsorId(9);
+        $new->setCampaignId(3);
+        $new->setCreatedAt(200);
+        $new->setSentAt(200);
+        $new->setOutcome(Inquiry::OUTCOME_DECLINED);
+        $new->setOutcomeAt(250);
+        $this->inquiries->method('findAll')->willReturn([$new, $old]);
+
+        $history = $this->service->sponsorHistory()[9];
+
+        $this->assertSame(2, $history['asked']);
+        $this->assertSame(1, $history['donations']);
+        $this->assertSame(20000, $history['donatedCents']);
+        $this->assertSame('declined', $history['last']['state']);
+        $this->assertSame(3, $history['last']['campaignId']);
+        $this->assertSame(250, $history['last']['at']);
+    }
 }

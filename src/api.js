@@ -236,3 +236,10 @@ export async function previewReminder(campaignId, sponsorId) {
 export async function sendReminders(campaignId, sponsorIds) {
 	return (await axios.post(base(`/campaigns/${campaignId}/remind`), { sponsorIds })).data
 }
+
+/**
+ * Per sponsor id: {last: {campaignId, campaignName, state, at, amountCents, note}, asked, donations, donatedCents}
+ */
+export async function getSponsorOverview() {
+	return (await axios.get(base('/sponsors/overview'))).data
+}

@@ -604,6 +604,69 @@ class InquiryService {
     }
 
     /**
+     * State of an inquiry as the lists show it: received, pledged,
+     * incomplete, later, declined, no_contact, replied (mail without status),
+     * waiting (written to) or failed (letter not sent).
+     */
+    public static function stateOf(Inquiry $inquiry): string {
+        if ($inquiry->isReceived()) {
+            return 'received';
+        }
+        $outcome = $inquiry->getEffectiveOutcome();
+        if ($outcome !== null) {
+            return $outcome;
+        }
+        if ($inquiry->getLastReplyAt() !== null) {
+            return 'replied';
+        }
+        return $inquiry->getSentAt() !== null ? 'waiting' : 'failed';
+    }
+
+    /**
+     * Per sponsor: the latest inquiry with its state, how often asked and
+     * how many donations arrived (for the list of possible sponsors).
+     *
+     * @return array<int, array{last: array<string, mixed>, asked: int, donations: int, donatedCents: int}>
+     */
+    public function sponsorHistory(): array {
+        $campaignNames = [];
+        foreach ($this->campaigns->findAll() as $campaign) {
+            $campaignNames[$campaign->getId()] = $campaign->getName();
+        }
+        $history = [];
+        $latest = [];
+        foreach ($this->inquiries->findAll() as $inquiry) {
+            $sponsorId = $inquiry->getSponsorId();
+            $entry = $history[$sponsorId] ?? ['asked' => 0, 'donations' => 0, 'donatedCents' => 0];
+            if ($inquiry->getSentAt() !== null) {
+                $entry['asked']++;
+            }
+            if ($inquiry->isReceived()) {
+                $entry['donations']++;
+                $entry['donatedCents'] += (int)$inquiry->getAmountCents();
+            }
+            $history[$sponsorId] = $entry;
+            if (!isset($latest[$sponsorId])
+                || [$inquiry->getCreatedAt(), $inquiry->getId()] > [$latest[$sponsorId]->getCreatedAt(), $latest[$sponsorId]->getId()]) {
+                $latest[$sponsorId] = $inquiry;
+            }
+        }
+        foreach ($latest as $sponsorId => $inquiry) {
+            $times = array_filter([$inquiry->getSentAt(), $inquiry->getRemindedAt(), $inquiry->getLastReplyAt(),
+                $inquiry->getOutcomeAt(), $inquiry->getRespondedAt()], static fn ($t) => $t !== null);
+            $history[$sponsorId]['last'] = [
+                'campaignId' => $inquiry->getCampaignId(),
+                'campaignName' => $campaignNames[$inquiry->getCampaignId()] ?? '',
+                'state' => self::stateOf($inquiry),
+                'at' => $times === [] ? $inquiry->getCreatedAt() : max($times),
+                'amountCents' => $inquiry->isPledged() ? $inquiry->getAmountCents() : null,
+                'note' => (string)$inquiry->getOutcomeNote(),
+            ];
+        }
+        return $history;
+    }
+
+    /**
      * Daily job: due reminders of all open campaigns, if switched on.
      *
      * @return int reminders sent

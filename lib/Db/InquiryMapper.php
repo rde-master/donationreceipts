@@ -49,6 +49,17 @@ class InquiryMapper extends QBMapper {
     }
 
     /**
+     * Every inquiry (for the sponsor overview).
+     *
+     * @return list<Inquiry>
+     */
+    public function findAll(): array {
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('*')->from($this->getTableName());
+        return $this->findEntities($qb);
+    }
+
+    /**
      * @return list<Inquiry>
      */
     public function findByCampaign(int $campaignId): array {

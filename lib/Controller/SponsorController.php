@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\DonationReceipts\Controller;
 
 use OCA\DonationReceipts\Exception\ValidationException;
+use OCA\DonationReceipts\Service\InquiryService;
 use OCA\DonationReceipts\Service\SponsorService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Db\DoesNotExistException;
@@ -19,6 +20,7 @@ class SponsorController extends Controller {
         string $appName,
         IRequest $request,
         private SponsorService $sponsors,
+        private InquiryService $inquiries,
         private IUserSession $userSession,
     ) {
         parent::__construct($appName, $request);
@@ -27,6 +29,14 @@ class SponsorController extends Controller {
     #[NoAdminRequired]
     public function index(string $search = ''): JSONResponse {
         return new JSONResponse($this->sponsors->search($search));
+    }
+
+    /**
+     * Per sponsor id: latest inquiry with state, times asked, donations.
+     */
+    #[NoAdminRequired]
+    public function overview(): JSONResponse {
+        return new JSONResponse((object)$this->inquiries->sponsorHistory());
     }
 
     #[NoAdminRequired]

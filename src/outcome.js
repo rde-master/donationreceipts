@@ -26,3 +26,16 @@ export const OUTCOMES = {
 
 /** No further letter for this campaign. */
 export const REFUSED = ['declined', 'no_contact']
+
+/** State of an inquiry (InquiryService::stateOf) as the lists show it. */
+export const STATES = {
+	received: 'Spende eingegangen',
+	pledged: 'Zusage – Spende offen',
+	incomplete: OUTCOMES.incomplete.label,
+	later: OUTCOMES.later.label,
+	declined: OUTCOMES.declined.label,
+	no_contact: OUTCOMES.no_contact.label,
+	replied: 'Antwort per Mail – Status offen',
+	waiting: 'Angeschrieben, ohne Antwort',
+	failed: 'Versand fehlgeschlagen',
+}
