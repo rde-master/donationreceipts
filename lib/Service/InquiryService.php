@@ -295,6 +295,9 @@ class InquiryService {
             'received' => $inquiry->isReceived(),
             'editable' => $this->isEditable($inquiry, $campaign),
             'respondedAt' => $inquiry->getRespondedAt(),
+            // status of the answer: "declined"/"no_contact" if the sponsor said no
+            'outcome' => $inquiry->getEffectiveOutcome(),
+            'outcomeNote' => $inquiry->getOutcomeBy() === null ? ($inquiry->getOutcomeNote() ?? '') : '',
             'response' => $response,
             'logoUpload' => $this->logoUploadPossible($inquiry),
             'hasLogo' => $inquiry->getLogoFileId() !== null,
@@ -320,6 +323,10 @@ class InquiryService {
             throw new ValidationException($inquiry->isReceived()
                 ? 'Ihre Spende ist bereits eingegangen; die Angaben können nicht mehr geändert werden.'
                 : 'Die Aktion ist beendet; Rückmeldungen sind nicht mehr möglich.');
+        }
+        $answer = $data['answer'] ?? 'yes';
+        if ($answer !== 'yes') {
+            return $this->decline($inquiry, $campaign, $sponsor, (string)$answer, $data['message'] ?? '', $token);
         }
         $logoFile = $logo !== null && ($data['publish'] ?? false) === true && $this->logoUploadPossible($inquiry)
             ? $this->checkLogo($logo)
@@ -408,6 +415,13 @@ class InquiryService {
         if ($outcome === Inquiry::OUTCOME_PLEDGED && !$inquiry->hasResponse()) {
             throw new ValidationException('Für eine Zusage bitte die Rückmeldung mit den Angaben erfassen (oder „Zusage – Angaben fehlen noch“ wählen)');
         }
+        return $this->applyOutcome($inquiry, $sponsor, $outcome, $note, $uid);
+    }
+
+    /**
+     * @param string|null $uid null = the sponsor via the form
+     */
+    private function applyOutcome(Inquiry $inquiry, Sponsor $sponsor, string $outcome, string $note, ?string $uid): Inquiry {
         $previous = $inquiry->getEffectiveOutcome();
         $now = $this->time->getTime();
         $inquiry->setOutcome($outcome);
@@ -423,6 +437,210 @@ class InquiryService {
             $this->sponsorService->setNoContact($sponsor, false);
         }
         return $inquiry;
+    }
+
+    /**
+     * The sponsor declines in the response form ("diesmal nicht" or "bitte
+     * keine Anfragen mehr"), with an optional message. The group is told,
+     * the sponsor gets a confirmation. Data entered before is kept, so a
+     * change of mind only needs the form again.
+     *
+     * @return array<string, mixed> the public view afterwards
+     * @throws ValidationException
+     * @throws DoesNotExistException unknown token
+     */
+    private function decline(Inquiry $inquiry, Campaign $campaign, Sponsor $sponsor, string $answer, mixed $message, string $token): array {
+        if (!in_array($answer, Inquiry::OUTCOMES_REFUSED, true)) {
+            throw new ValidationException('Ungültige Antwort');
+        }
+        if (!is_string($message) || mb_strlen(trim($message)) > 2000) {
+            throw new ValidationException('Die Nachricht ist zu lang');
+        }
+        $inquiry = $this->applyOutcome($inquiry, $sponsor, $answer, trim($message), null);
+        $this->groupNotifier->declined($inquiry, $sponsor, $campaign);
+
+        if ($this->settings->missingForMail(SettingsService::ACCOUNT_SPONSORS) === []) {
+            $values = SponsorTemplate::values($sponsor, $campaign, $this->link($inquiry), $this->settings->getString('org_name'))
+                + ['antwort' => SponsorTemplate::DECLINE_TEXTS[$answer]];
+            try {
+                $this->sender->send(SettingsService::ACCOUNT_SPONSORS, $this->withMessageId($this->sender->newEmail(
+                    SettingsService::ACCOUNT_SPONSORS,
+                    $sponsor->getEmail(),
+                    MailTemplate::render($this->settings->getString('decline_subject'), $values),
+                    MailHtml::render(MailHtml::sanitize($this->settings->getString('decline_body')), $values),
+                ), $inquiry));
+            } catch (ValidationException $e) {
+                $this->logger->warning('Sending decline confirmation failed: ' . $e->getMessage());
+            }
+        }
+        return $this->publicView($token) + ['logoWarning' => null];
+    }
+
+    /**
+     * Can get a reminder: written to, no answer yet (or pledged without
+     * data), nothing arrived, campaign open, sponsor not blocked. A reply
+     * mail without status needs a person first.
+     */
+    public function isRemindable(Inquiry $inquiry, Sponsor $sponsor, Campaign $campaign): bool {
+        if ($inquiry->getSentAt() === null || $inquiry->isReceived() || $campaign->isClosed() || $sponsor->isNoContact()) {
+            return false;
+        }
+        $outcome = $inquiry->getEffectiveOutcome();
+        if ($outcome === null) {
+            return $inquiry->getLastReplyAt() === null;
+        }
+        return $outcome === Inquiry::OUTCOME_INCOMPLETE;
+    }
+
+    /**
+     * Remindable, the last letter/reminder is "reminder_days" ago and fewer
+     * than "reminder_max" reminders were sent.
+     */
+    public function isReminderDue(Inquiry $inquiry, Sponsor $sponsor, Campaign $campaign): bool {
+        $last = $inquiry->getLastContactAt();
+        return $this->isRemindable($inquiry, $sponsor, $campaign)
+            && (int)$inquiry->getReminderCount() < (int)$this->settings->get('reminder_max')
+            && $last !== null
+            && $last <= $this->time->getTime() - (int)$this->settings->get('reminder_days') * 86400;
+    }
+
+    /**
+     * Inquiries of a campaign with a due reminder.
+     *
+     * @return list<Inquiry>
+     */
+    public function dueReminders(int $campaignId): array {
+        $campaign = $this->campaigns->find($campaignId);
+        $due = [];
+        foreach ($this->inquiries->findByCampaign($campaignId) as $inquiry) {
+            try {
+                $sponsor = $this->sponsors->find($inquiry->getSponsorId());
+            } catch (DoesNotExistException) {
+                continue;
+            }
+            if ($this->isReminderDue($inquiry, $sponsor, $campaign)) {
+                $due[] = $inquiry;
+            }
+        }
+        return $due;
+    }
+
+    /**
+     * The reminder a sponsor would get (template by the status).
+     *
+     * @return array{to: string, subject: string, html: string}
+     * @throws DoesNotExistException
+     */
+    public function previewReminder(int $campaignId, int $sponsorId): array {
+        $campaign = $this->campaigns->find($campaignId);
+        $sponsor = $this->sponsors->find($sponsorId);
+        $inquiry = $this->inquiries->findByCampaignAndSponsor($campaignId, $sponsorId);
+        if ($inquiry === null) {
+            throw new DoesNotExistException('not written to');
+        }
+        [$subject, $html] = $this->reminderText($inquiry, $sponsor, $campaign);
+        return ['to' => $sponsor->getEmail(), 'subject' => $subject, 'html' => $html];
+    }
+
+    /**
+     * Sends the reminder (template by the status) to each remindable sponsor;
+     * the others are reported as not sent.
+     *
+     * @param list<int> $sponsorIds
+     * @return list<array{sponsorId: int, name: string, email: string, error: string|null}>
+     * @throws ValidationException
+     * @throws DoesNotExistException unknown campaign
+     */
+    public function sendReminders(int $campaignId, array $sponsorIds): array {
+        $campaign = $this->campaigns->find($campaignId);
+        if ($campaign->isClosed()) {
+            throw new ValidationException('Die Aktion ist geschlossen');
+        }
+        $sponsorIds = array_values(array_unique(array_map('intval', $sponsorIds)));
+        if ($sponsorIds === []) {
+            throw new ValidationException('Bitte mindestens einen möglichen Sponsor auswählen');
+        }
+        if (count($sponsorIds) > self::MAX_RECIPIENTS) {
+            throw new ValidationException('Höchstens ' . self::MAX_RECIPIENTS . ' Empfänger auf einmal');
+        }
+        $missing = $this->settings->missingForMail(SettingsService::ACCOUNT_SPONSORS);
+        if ($missing !== []) {
+            throw new ValidationException('Bitte zuerst den SMTP-Zugang für Sponsoren-Anschreiben vervollständigen: ' . implode(', ', $missing));
+        }
+
+        $results = [];
+        $emails = [];
+        $targets = [];
+        foreach ($sponsorIds as $sponsorId) {
+            try {
+                $sponsor = $this->sponsors->find($sponsorId);
+            } catch (DoesNotExistException) {
+                continue;
+            }
+            $inquiry = $this->inquiries->findByCampaignAndSponsor($campaignId, $sponsorId);
+            if ($inquiry === null || !$this->isRemindable($inquiry, $sponsor, $campaign)) {
+                $results[] = ['sponsorId' => $sponsorId, 'name' => $sponsor->getName(), 'email' => $sponsor->getEmail(),
+                    'error' => 'keine Erinnerung möglich (nicht angeschrieben, schon geantwortet oder abgesagt)'];
+                continue;
+            }
+            [$subject, $html] = $this->reminderText($inquiry, $sponsor, $campaign);
+            $emails[$sponsorId] = $this->withMessageId($this->sender->newEmail(SettingsService::ACCOUNT_SPONSORS, $sponsor->getEmail(), $subject, $html), $inquiry);
+            $targets[$sponsorId] = [$sponsor, $inquiry];
+        }
+
+        $errors = $emails === [] ? [] : $this->sender->sendEach(SettingsService::ACCOUNT_SPONSORS, $emails);
+        $now = $this->time->getTime();
+        foreach ($targets as $sponsorId => [$sponsor, $inquiry]) {
+            $error = $errors[$sponsorId] ?? null;
+            if ($error === null) {
+                $inquiry->setRemindedAt($now);
+                $inquiry->setReminderCount((int)$inquiry->getReminderCount() + 1);
+                $inquiry->setUpdatedAt($now);
+                $this->inquiries->update($inquiry);
+            }
+            $results[] = ['sponsorId' => $sponsorId, 'name' => $sponsor->getName(), 'email' => $sponsor->getEmail(), 'error' => $error];
+        }
+        return $results;
+    }
+
+    /**
+     * Daily job: due reminders of all open campaigns, if switched on.
+     *
+     * @return int reminders sent
+     */
+    public function sendDueReminders(): int {
+        if (!$this->settings->get('reminder_auto') || $this->settings->missingForMail(SettingsService::ACCOUNT_SPONSORS) !== []) {
+            return 0;
+        }
+        $sent = 0;
+        foreach ($this->campaigns->findAll() as $campaign) {
+            if ($campaign->isClosed()) {
+                continue;
+            }
+            $sponsorIds = array_map(static fn (Inquiry $i): int => $i->getSponsorId(), $this->dueReminders($campaign->getId()));
+            foreach (array_chunk($sponsorIds, self::MAX_RECIPIENTS) as $chunk) {
+                foreach ($this->sendReminders($campaign->getId(), $chunk) as $result) {
+                    if ($result['error'] === null) {
+                        $sent++;
+                    } else {
+                        $this->logger->warning("Reminder to {$result['email']} failed: {$result['error']}");
+                    }
+                }
+            }
+        }
+        return $sent;
+    }
+
+    /**
+     * @return array{0: string, 1: string} subject and HTML of the reminder
+     */
+    private function reminderText(Inquiry $inquiry, Sponsor $sponsor, Campaign $campaign): array {
+        $prefix = $inquiry->getEffectiveOutcome() === Inquiry::OUTCOME_INCOMPLETE ? 'reminder_incomplete_' : 'reminder_';
+        $values = SponsorTemplate::values($sponsor, $campaign, $this->link($inquiry), $this->settings->getString('org_name'));
+        return [
+            MailTemplate::render($this->settings->getString($prefix . 'subject'), $values),
+            MailHtml::render(MailHtml::sanitize($this->settings->getString($prefix . 'body')), $values),
+        ];
     }
 
     /**
@@ -449,6 +667,7 @@ class InquiryService {
             }
         }
         $inquiry->setOutcome(Inquiry::OUTCOME_PLEDGED);
+        $inquiry->setOutcomeNote(null);
         $inquiry->setOutcomeBy($uid);
         $inquiry->setOutcomeAt($now);
     }

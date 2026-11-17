@@ -49,12 +49,26 @@
 							{{ campaign.name }}
 						</RouterLink>
 						<span v-if="campaign.closed" class="dr-muted"> (geschlossen)</span>
+						<div v-if="campaign.summary.repliesWithoutStatus || campaign.summary.reminderDue" class="dr-warning">
+							<template v-if="campaign.summary.repliesWithoutStatus">
+								{{ campaign.summary.repliesWithoutStatus }} Antwort-Mails ohne Status
+							</template>
+							<template v-if="campaign.summary.repliesWithoutStatus && campaign.summary.reminderDue">
+								·
+							</template>
+							<template v-if="campaign.summary.reminderDue">
+								{{ campaign.summary.reminderDue }} Erinnerungen fällig
+							</template>
+						</div>
 					</td>
 					<td class="dr-num">
 						{{ campaign.summary.sent }}
 					</td>
 					<td class="dr-num">
 						{{ campaign.summary.responded }}
+						<div v-if="campaign.summary.declined" class="dr-muted">
+							davon {{ campaign.summary.declined }} Absagen
+						</div>
 					</td>
 					<td class="dr-num">
 						{{ formatAmount(campaign.summary.pledgedCents) }}

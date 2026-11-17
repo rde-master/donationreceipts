@@ -52,6 +52,25 @@ class GroupNotifier {
             . $this->appLink('aktionen/' . $campaign->getId(), 'In der App öffnen'));
     }
 
+    /**
+     * The sponsor declined in the response form.
+     */
+    public function declined(Inquiry $inquiry, Sponsor $sponsor, Campaign $campaign): void {
+        $label = InquiryService::OUTCOME_LABELS[(string)$inquiry->getOutcome()] ?? 'Absage';
+        $this->notify('inquiry', (int)$inquiry->getId(), Notifier::SUBJECT_RESPONSE, [
+            'sponsor' => $sponsor->getName(),
+            'campaign' => $campaign->getName(),
+            'campaignId' => $campaign->getId(),
+            'declined' => $label,
+        ]);
+        $subject = "Absage: {$sponsor->getName()} ({$campaign->getName()}) – {$label}";
+        $message = trim((string)$inquiry->getOutcomeNote());
+        $this->mail($subject, '<p>' . $this->escape($subject) . '</p>'
+            . ($message !== '' ? '<p>Nachricht: ' . nl2br($this->escape($message), false) . '</p>' : '')
+            . ($inquiry->getOutcome() === Inquiry::OUTCOME_NO_CONTACT ? '<p>Der Sponsor ist als „nicht mehr anschreiben“ markiert.</p>' : '')
+            . $this->appLink('aktionen/' . $campaign->getId(), 'In der App öffnen'));
+    }
+
     public function reply(Reply $reply, ?string $sponsorName, ?string $campaignName): void {
         $from = $sponsorName ?? $reply->getFromEmail();
         $this->notify('reply', (int)$reply->getId(), Notifier::SUBJECT_REPLY, [

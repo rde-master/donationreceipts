@@ -43,7 +43,8 @@ class CampaignController extends Controller {
     #[NoAdminRequired]
     public function index(): JSONResponse {
         return new JSONResponse(array_map(fn (Campaign $c) => $c->jsonSerialize() + [
-            'summary' => InquiryService::summary($this->inquiries->forCampaign($c->getId())),
+            'summary' => InquiryService::summary($this->inquiries->forCampaign($c->getId()))
+                + ['reminderDue' => $c->isClosed() ? 0 : count($this->inquiries->dueReminders($c->getId()))],
         ], $this->campaigns->list()));
     }
 
@@ -74,7 +75,13 @@ class CampaignController extends Controller {
         $rows = [];
         foreach ($this->sponsors->search() as $sponsor) {
             $inquiry = $bySponsor[$sponsor->getId()] ?? null;
-            $rows[] = ['sponsor' => $sponsor, 'inquiry' => $inquiry === null ? null : $this->serializeInquiry($inquiry)];
+            $rows[] = [
+                'sponsor' => $sponsor,
+                'inquiry' => $inquiry === null ? null : $this->serializeInquiry($inquiry) + [
+                    'remindable' => $this->inquiries->isRemindable($inquiry, $sponsor, $campaign),
+                    'reminderDue' => $this->inquiries->isReminderDue($inquiry, $sponsor, $campaign),
+                ],
+            ];
         }
         return new JSONResponse([
             'campaign' => $campaign,
@@ -82,6 +89,11 @@ class CampaignController extends Controller {
             'rows' => $rows,
             'ticketLabels' => SponsorTemplate::TICKET_LABELS,
             'mailMissing' => $this->settings->missingForMail(SettingsService::ACCOUNT_SPONSORS),
+            'reminder' => [
+                'days' => $this->settings->get('reminder_days'),
+                'max' => $this->settings->get('reminder_max'),
+                'auto' => $this->settings->get('reminder_auto'),
+            ],
         ]);
     }
 
@@ -146,6 +158,30 @@ class CampaignController extends Controller {
             return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
         } catch (DoesNotExistException) {
             return new JSONResponse(['error' => 'Aktion oder möglicher Sponsor nicht gefunden'], Http::STATUS_NOT_FOUND);
+        }
+    }
+
+    #[NoAdminRequired]
+    public function previewReminder(int $id, int $sponsorId): JSONResponse {
+        try {
+            return new JSONResponse($this->inquiries->previewReminder($id, $sponsorId));
+        } catch (DoesNotExistException) {
+            return new JSONResponse(['error' => 'Aktion oder Anschreiben nicht gefunden'], Http::STATUS_NOT_FOUND);
+        }
+    }
+
+    /**
+     * @param list<int> $sponsorIds
+     */
+    #[NoAdminRequired]
+    #[UserRateLimit(limit: 30, period: 3600)]
+    public function remind(int $id, array $sponsorIds): JSONResponse {
+        try {
+            return new JSONResponse(['results' => $this->inquiries->sendReminders($id, $sponsorIds)]);
+        } catch (ValidationException $e) {
+            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
+        } catch (DoesNotExistException) {
+            return $this->notFound();
         }
     }
 

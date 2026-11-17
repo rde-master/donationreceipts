@@ -228,3 +228,11 @@ export async function testImap() {
 export async function setOutcome(campaignId, sponsorId, outcome, note = '', replyId = null) {
 	return (await axios.put(base(`/campaigns/${campaignId}/sponsors/${sponsorId}/outcome`), { outcome, note, replyId })).data
 }
+
+export async function previewReminder(campaignId, sponsorId) {
+	return (await axios.post(base(`/campaigns/${campaignId}/reminder-preview`), { sponsorId })).data
+}
+
+export async function sendReminders(campaignId, sponsorIds) {
+	return (await axios.post(base(`/campaigns/${campaignId}/remind`), { sponsorIds })).data
+}

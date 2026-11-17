@@ -23,13 +23,43 @@
 					<NcNoteCard v-else-if="state.closed" type="info">
 						Die Aktion ist beendet; Rückmeldungen sind nicht mehr möglich.
 					</NcNoteCard>
+					<NcNoteCard v-else-if="declinedBefore" type="info">
+						Sie haben uns mitgeteilt: {{ ANSWERS[state.outcome].short }}. Falls Sie es sich anders überlegen,
+						können Sie Ihre Antwort hier ändern.
+					</NcNoteCard>
 					<NcNoteCard v-else-if="state.respondedAt" type="info">
 						Ihre Rückmeldung vom {{ formatDateTime(state.respondedAt) }} liegt uns vor. Sie können sie hier
 						ändern, bis Ihre Spende eingegangen ist.
 					</NcNoteCard>
 				</div>
 
-				<div class="dr-public__form">
+				<section v-if="state.editable" class="dr-public__card dr-public__answer">
+					<h3>Ihre Antwort</h3>
+					<NcCheckboxRadioSwitch v-for="(option, value) in ANSWERS"
+						:key="value"
+						v-model="answer"
+						type="radio"
+						:value="value"
+						name="dr-answer">
+						{{ option.label.replace('{aktion}', state.campaign) }}
+					</NcCheckboxRadioSwitch>
+				</section>
+
+				<section v-if="answer !== 'yes'" class="dr-public__card dr-public__decline">
+					<h3>{{ answer === 'no_contact' ? 'Keine Anfragen mehr' : 'Diesmal nicht' }}</h3>
+					<p class="dr-muted">
+						{{ answer === 'no_contact'
+							? 'Schade! Wir nehmen Sie aus unserem Verteiler und schreiben Sie nicht mehr an.'
+							: 'Schade – vielleicht klappt es beim nächsten Mal. Für diese Aktion fragen wir nicht mehr nach.' }}
+					</p>
+					<NcTextArea v-model="message"
+						label="Möchten Sie uns noch etwas mitteilen? (optional)"
+						resize="vertical"
+						rows="3"
+						:disabled="!state.editable" />
+				</section>
+
+				<div v-else class="dr-public__form">
 					<ResponseFields v-model="form" :tickets="state.tickets" :disabled="!state.editable">
 						<template #publish>
 							<div v-if="form.publish === 'yes' && state.logoUpload" class="dr-logo">
@@ -54,7 +84,11 @@
 		<div v-if="state.editable" class="dr-shell__bar">
 			<!-- results of saving right above the button, where the user looks -->
 			<div v-if="saved || error || logoWarning" class="dr-shell__messages">
-				<NcNoteCard v-if="saved" type="success">
+				<NcNoteCard v-if="saved && answer !== 'yes'" type="success">
+					Vielen Dank für Ihre Antwort – wir haben uns notiert: {{ ANSWERS[answer].short }}. Sie können sie
+					über diesen Link jederzeit ändern.
+				</NcNoteCard>
+				<NcNoteCard v-else-if="saved" type="success">
 					Vielen Dank! Ihre Angaben sind gespeichert. Sie erhalten eine Bestätigung per E-Mail und können
 					Ihre Angaben über diesen Link ändern, bis Ihre Spende eingegangen ist.
 				</NcNoteCard>
@@ -67,7 +101,10 @@
 			</div>
 			<div class="dr-shell__bar-inner">
 				<p class="dr-public__missing" :class="{ 'dr-public__missing--ok': missing.length === 0 }">
-					<template v-if="missing.length">
+					<template v-if="answer !== 'yes'">
+						{{ ANSWERS[answer].short }}
+					</template>
+					<template v-else-if="missing.length">
 						Noch offen: {{ missing.join(', ') }}
 					</template>
 					<template v-else>
@@ -81,7 +118,7 @@
 					<template #icon>
 						<NcLoadingIcon v-if="saving" :size="20" />
 					</template>
-					{{ state.respondedAt ? 'Änderungen speichern' : 'Rückmeldung absenden' }}
+					{{ buttonLabel }}
 				</NcButton>
 			</div>
 		</div>
@@ -93,8 +130,10 @@ import axios from '@nextcloud/axios'
 import { loadState } from '@nextcloud/initial-state'
 import { generateUrl } from '@nextcloud/router'
 import NcButton from '@nextcloud/vue/components/NcButton'
+import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwitch'
 import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
 import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
+import NcTextArea from '@nextcloud/vue/components/NcTextArea'
 import { computed, ref, watch } from 'vue'
 import { errorMessage } from '../api.js'
 import ResponseFields from '../components/ResponseFields.vue'
@@ -102,6 +141,13 @@ import { formatDateTime } from '../format.js'
 import { responseMissing, responseForm, responsePayload } from '../responseForm.js'
 
 const MAX_LOGO_BYTES = 10 * 1024 * 1024
+
+// the sponsor's answer; the declines need no data
+const ANSWERS = {
+	yes: { label: 'Ja, wir unterstützen {aktion}', short: 'Zusage' },
+	declined: { label: 'Diesmal leider nicht', short: 'diesmal nicht' },
+	no_contact: { label: 'Bitte keine Anfragen mehr', short: 'bitte keine Anfragen mehr' },
+}
 
 const state = ref(loadState('donationreceipts', 'response'))
 const form = ref(responseForm(state.value.response))
@@ -111,12 +157,24 @@ const saving = ref(false)
 const saved = ref(false)
 const error = ref('')
 const logoWarning = ref('')
+const answer = ref(ANSWERS[state.value.outcome] && state.value.outcome !== 'pledged' ? state.value.outcome : 'yes')
+const message = ref(state.value.outcomeNote ?? '')
+
+// the sponsor said no before (and has not changed it in this visit)
+const declinedBefore = computed(() => !saved.value && ['declined', 'no_contact'].includes(state.value.outcome))
+
+const buttonLabel = computed(() => {
+	if (answer.value !== 'yes') {
+		return answer.value === state.value.outcome ? 'Antwort aktualisieren' : 'Antwort senden'
+	}
+	return state.value.respondedAt ? 'Änderungen speichern' : 'Rückmeldung absenden'
+})
 
 // what still keeps the submit button disabled, shown next to it
-const missing = computed(() => responseMissing(form.value))
+const missing = computed(() => answer.value === 'yes' ? responseMissing(form.value) : [])
 
 // a new change is not saved yet
-watch(form, () => {
+watch([form, answer, message], () => {
 	saved.value = false
 }, { deep: true })
 
@@ -137,8 +195,10 @@ async function submit() {
 	error.value = ''
 	logoWarning.value = ''
 	const data = new FormData()
-	data.append('data', JSON.stringify(responsePayload(form.value)))
-	if (logo.value && form.value.publish === 'yes') {
+	data.append('data', JSON.stringify(answer.value === 'yes'
+		? responsePayload(form.value)
+		: { answer: answer.value, message: message.value }))
+	if (answer.value === 'yes' && logo.value && form.value.publish === 'yes') {
 		data.append('logo', logo.value)
 	}
 	try {
@@ -290,6 +350,24 @@ async function submit() {
 
 .dr-public__missing--ok {
 	color: var(--color-success-text);
+}
+
+.dr-public__answer,
+.dr-public__decline {
+	display: flex;
+	flex-direction: column;
+	gap: var(--default-grid-baseline);
+}
+
+.dr-public__answer h3,
+.dr-public__decline h3 {
+	margin: 0 0 var(--default-grid-baseline);
+	font-size: 18px;
+	font-weight: bold;
+}
+
+.dr-public__decline p {
+	margin: 0 0 calc(var(--default-grid-baseline) * 2);
 }
 
 .dr-logo {

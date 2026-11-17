@@ -192,8 +192,8 @@
 				<p class="dr-muted">
 					Die App liest alle 10 Minuten neue Mails im Postfach der Anschreiben – nur lesend, Mails
 					bleiben unverändert und ungelesen. Übernommen werden Antworten auf Anschreiben und Mails von
-					Adressen möglicher Sponsoren; sie erscheinen unter „Antworten“ als Aufgabe. Ältere Mails
-					werden beim ersten Abruf nicht übernommen.
+					Adressen möglicher Sponsoren; sie erscheinen unter „Antworten“ als Aufgabe und beim Sponsor in
+					der Aktion. Beim ersten Abruf werden die Mails der letzten 30 Tage berücksichtigt.
 				</p>
 				<NcCheckboxRadioSwitch v-model="values.sponsor_imap_enabled" type="switch">
 					Antworten automatisch abrufen
@@ -265,17 +265,12 @@
 			</section>
 
 			<section>
-				<h3>Bestätigung an den Sponsor</h3>
+				<h3>Mails an Sponsoren</h3>
 				<p class="dr-muted">
-					Geht nach jeder Rückmeldung (auch nach Änderungen) an die E-Mail-Adresse des Sponsors.
-				</p>
-				<NcTextField v-model="values.confirm_subject" label="Betreff" />
-				<HtmlEditor v-model="values.confirm_body" label="Text" :placeholders="confirmPlaceholders" />
-				<p class="dr-muted">
-					Platzhalter:
-					<span v-for="(label, key) in confirmPlaceholders" :key="key" class="dr-placeholder">
-						<code>{{ '{' + key + '}' }}</code> {{ label }}
-					</span>
+					Bestätigung einer Zusage oder Absage und die Erinnerungen stehen unter
+					<RouterLink :to="{ name: 'templates' }">
+						Vorlagen
+					</RouterLink>.
 				</p>
 			</section>
 
@@ -368,7 +363,6 @@ const sponsorSmtpPassword = ref('')
 const sponsorSmtpPasswordSet = ref(false)
 const sponsorMailMissing = ref([])
 const sponsorPlaceholders = ref({})
-const confirmPlaceholders = ref({})
 const sponsorTestAddress = ref(getCurrentUser()?.email ?? '')
 const imapPassword = ref('')
 const imapPasswordSet = ref(false)
@@ -414,7 +408,6 @@ function apply(data) {
 	sponsorSmtpPasswordSet.value = data.sponsorSmtpPasswordSet
 	sponsorMailMissing.value = data.sponsorMailMissing
 	sponsorPlaceholders.value = data.sponsorPlaceholders
-	confirmPlaceholders.value = data.confirmPlaceholders
 	sponsorSmtpPassword.value = ''
 	imapPasswordSet.value = data.imapPasswordSet
 	imapPassword.value = ''

@@ -53,6 +53,8 @@ return [
         ['name' => 'campaign#destroy', 'url' => '/api/campaigns/{id}', 'verb' => 'DELETE', 'requirements' => ['id' => '\d+']],
         ['name' => 'campaign#preview', 'url' => '/api/campaigns/{id}/preview', 'verb' => 'POST', 'requirements' => ['id' => '\d+']],
         ['name' => 'campaign#send', 'url' => '/api/campaigns/{id}/send', 'verb' => 'POST', 'requirements' => ['id' => '\d+']],
+        ['name' => 'campaign#previewReminder', 'url' => '/api/campaigns/{id}/reminder-preview', 'verb' => 'POST', 'requirements' => ['id' => '\d+']],
+        ['name' => 'campaign#remind', 'url' => '/api/campaigns/{id}/remind', 'verb' => 'POST', 'requirements' => ['id' => '\d+']],
         ['name' => 'campaign#outcome', 'url' => '/api/campaigns/{id}/sponsors/{sponsorId}/outcome', 'verb' => 'PUT', 'requirements' => ['id' => '\d+', 'sponsorId' => '\d+']],
         ['name' => 'campaign#respond', 'url' => '/api/campaigns/{id}/sponsors/{sponsorId}/response', 'verb' => 'PUT', 'requirements' => ['id' => '\d+', 'sponsorId' => '\d+']],
 

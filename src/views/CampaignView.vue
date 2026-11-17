@@ -64,15 +64,40 @@
 					:clearable="false"
 					input-label="Anzeigen"
 					:label-outside="false" />
-				<NcButton variant="primary"
-					:disabled="!selected.length || campaign.closed"
-					@click="letterOpen = true">
-					<template #icon>
-						<NcIconSvgWrapper :path="mdiSend" />
-					</template>
-					Anschreiben an {{ selected.length }} {{ selected.length === 1 ? 'Sponsor' : 'Sponsoren' }}
-				</NcButton>
+				<div class="dr-actions dr-toolbar__actions">
+					<NcButton v-if="dueRows.length && !campaign.closed" @click="selectDue">
+						<template #icon>
+							<NcIconSvgWrapper :path="mdiBellAlertOutline" />
+						</template>
+						{{ dueRows.length }} {{ dueRows.length === 1 ? 'Erinnerung' : 'Erinnerungen' }} fällig – auswählen
+					</NcButton>
+					<NcButton :disabled="!remindRows.length || campaign.closed"
+						:title="selected.length && !remindRows.length ? 'Unter den ausgewählten ist niemand ohne Antwort bzw. mit fehlenden Angaben' : ''"
+						@click="reminderOpen = true">
+						<template #icon>
+							<NcIconSvgWrapper :path="mdiBellRingOutline" />
+						</template>
+						Erinnerung an {{ remindRows.length }}
+					</NcButton>
+					<NcButton variant="primary"
+						:disabled="!selected.length || campaign.closed"
+						@click="letterOpen = true">
+						<template #icon>
+							<NcIconSvgWrapper :path="mdiSend" />
+						</template>
+						Anschreiben an {{ selected.length }} {{ selected.length === 1 ? 'Sponsor' : 'Sponsoren' }}
+					</NcButton>
+				</div>
 			</div>
+			<p class="dr-muted dr-reminder-rule">
+				Erinnerungen sind fällig {{ data.reminder.days }} Tage nach dem Anschreiben bzw. der letzten
+				Erinnerung, höchstens {{ data.reminder.max }}× je Sponsor
+				({{ data.reminder.auto ? 'werden täglich automatisch gesendet' : 'Versand von Hand' }}) –
+				einstellbar unter
+				<RouterLink :to="{ name: 'templates' }">
+					Vorlagen
+				</RouterLink>.
+			</p>
 
 			<p v-if="!rows.length" class="dr-muted">
 				Es gibt noch keine möglichen Sponsoren. Lege sie unter
@@ -120,6 +145,12 @@
 							</div>
 							<div v-if="row.inquiry?.responseBy" class="dr-muted">
 								manuell erfasst
+							</div>
+							<div v-if="row.inquiry?.reminderCount" class="dr-muted">
+								erinnert {{ formatDateTime(row.inquiry.remindedAt) }}{{ row.inquiry.reminderCount > 1 ? ` (${row.inquiry.reminderCount}×)` : '' }}
+							</div>
+							<div v-if="row.inquiry?.reminderDue" class="dr-warning">
+								Erinnerung fällig
 							</div>
 							<div v-if="openReplies[row.sponsor.id]">
 								<RouterLink :to="{ name: 'replies' }" class="dr-warning">
@@ -183,6 +214,12 @@
 			</table>
 		</template>
 
+		<ReminderDialog v-if="reminderOpen"
+			:campaign="campaign"
+			:rows="remindRows"
+			@sent="afterSend"
+			@close="reminderOpen = false" />
+
 		<LetterDialog v-if="letterOpen"
 			:campaign="campaign"
 			:sponsors="rows.filter((r) => selected.includes(r.sponsor.id)).map((r) => r.sponsor)"
@@ -231,7 +268,7 @@
 </template>
 
 <script setup>
-import { mdiClipboardEditOutline, mdiDelete, mdiLinkVariant, mdiListStatus, mdiLockOpenVariantOutline, mdiLockOutline, mdiPencil, mdiSend } from '@mdi/js'
+import { mdiBellAlertOutline, mdiBellRingOutline, mdiClipboardEditOutline, mdiDelete, mdiLinkVariant, mdiListStatus, mdiLockOpenVariantOutline, mdiLockOutline, mdiPencil, mdiSend } from '@mdi/js'
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwitch'
@@ -247,6 +284,7 @@ import { deleteCampaign, errorMessage, getCampaign, listReplies, logoUrl, update
 import StatTile from '../components/charts/StatTile.vue'
 import LetterDialog from '../components/LetterDialog.vue'
 import OutcomeDialog from '../components/OutcomeDialog.vue'
+import ReminderDialog from '../components/ReminderDialog.vue'
 import ResponseDialog from '../components/ResponseDialog.vue'
 import ResponseFormDialog from '../components/ResponseFormDialog.vue'
 import { formatAmount, formatDateTime } from '../format.js'
@@ -266,6 +304,7 @@ const FILTERS = [
 	{ id: 'open', label: 'Zusage, Spende offen' },
 	{ id: 'received', label: 'Spende eingegangen' },
 	{ id: 'declined', label: 'Absage / nicht mehr anschreiben' },
+	{ id: 'due', label: 'Erinnerung fällig' },
 ]
 
 const router = useRouter()
@@ -276,6 +315,7 @@ const letterOpen = ref(false)
 const responseRow = ref(null)
 const manualRow = ref(null)
 const outcomeRow = ref(null)
+const reminderOpen = ref(false)
 // open reply mails per sponsor id
 const openReplies = ref({})
 const renameOpen = ref(false)
@@ -320,9 +360,25 @@ function openManualFromOutcome() {
 	outcomeRow.value = null
 }
 
-const visibleRows = computed(() => filter.value.id === 'all'
-	? rows.value
-	: rows.value.filter((row) => state(row) === filter.value.id))
+const visibleRows = computed(() => {
+	switch (filter.value.id) {
+	case 'all':
+		return rows.value
+	case 'due':
+		return dueRows.value
+	default:
+		return rows.value.filter((row) => state(row) === filter.value.id)
+	}
+})
+// reminder due: no answer (or data missing) for some days
+const dueRows = computed(() => rows.value.filter((row) => row.inquiry?.reminderDue))
+// the selected ones a reminder can go to
+const remindRows = computed(() => rows.value.filter((row) => selected.value.includes(row.sponsor.id) && row.inquiry?.remindable))
+
+function selectDue() {
+	filter.value = FILTERS.find((f) => f.id === 'due')
+	selected.value = dueRows.value.map((row) => row.sponsor.id)
+}
 
 const allSelected = computed(() => visibleRows.value.some(selectable)
 	&& visibleRows.value.filter(selectable).every((row) => selected.value.includes(row.sponsor.id)))
@@ -445,6 +501,15 @@ onMounted(load)
 .dr-toolbar > * {
 	flex: 0 0 auto;
 	min-width: 240px;
+}
+
+.dr-toolbar__actions {
+	margin-top: 0;
+	flex-wrap: wrap;
+}
+
+.dr-reminder-rule {
+	margin-bottom: calc(var(--default-grid-baseline) * 2);
 }
 
 .dr-check {

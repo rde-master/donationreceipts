@@ -70,6 +70,20 @@ class SettingsService {
         'response_intro' => ['type' => 'string', 'default' => SponsorTemplate::DEFAULT_INTRO],
         'confirm_subject' => ['type' => 'string', 'default' => SponsorTemplate::DEFAULT_CONFIRM_SUBJECT],
         'confirm_body' => ['type' => 'string', 'default' => SponsorTemplate::DEFAULT_CONFIRM_BODY],
+        // Bestätigung einer Absage über das Formular
+        'decline_subject' => ['type' => 'string', 'default' => SponsorTemplate::DEFAULT_DECLINE_SUBJECT],
+        'decline_body' => ['type' => 'string', 'default' => SponsorTemplate::DEFAULT_DECLINE_BODY],
+        // Erinnerungen: ohne Antwort / Zusage mit fehlenden Angaben
+        'reminder_subject' => ['type' => 'string', 'default' => SponsorTemplate::DEFAULT_REMINDER_SUBJECT],
+        'reminder_body' => ['type' => 'string', 'default' => SponsorTemplate::DEFAULT_REMINDER_BODY],
+        'reminder_incomplete_subject' => ['type' => 'string', 'default' => SponsorTemplate::DEFAULT_REMINDER_INCOMPLETE_SUBJECT],
+        'reminder_incomplete_body' => ['type' => 'string', 'default' => SponsorTemplate::DEFAULT_REMINDER_INCOMPLETE_BODY],
+        // fällig so viele Tage nach dem letzten Anschreiben bzw. der letzten Erinnerung
+        'reminder_days' => ['type' => 'int', 'default' => 14],
+        // höchstens so viele Erinnerungen je Sponsor und Aktion
+        'reminder_max' => ['type' => 'int', 'default' => 2],
+        // fällige Erinnerungen täglich automatisch senden
+        'reminder_auto' => ['type' => 'bool', 'default' => false],
         // Ablage der hochgeladenen Logos (Nextcloud file ID, set via StorageService); 0 = no upload
         'folder_logos_id' => ['type' => 'int', 'default' => 0],
         // Info-Mail an die Gruppenmitglieder bei Rückmeldungen und Antworten
@@ -98,7 +112,7 @@ class SettingsService {
     private const DATE_KEYS = ['exemption_date', 'statute_date'];
 
     /** Mail texts edited in the HTML editor (older plain-text values are converted on read). */
-    private const HTML_KEYS = ['mail_body', 'confirm_body'];
+    private const HTML_KEYS = ['mail_body', 'confirm_body', 'decline_body', 'reminder_body', 'reminder_incomplete_body'];
 
     /** Only set through their own services (with access checks), never from the settings form. */
     private const INTERNAL_KEYS = ['folder_unsigned_id', 'folder_signed_id', 'folder_logos_id'];
@@ -284,6 +298,12 @@ class SettingsService {
             }
             if ($key === 'sponsor_imap_port' && ($value < 1 || $value > 65535)) {
                 throw new ValidationException('Ungültiger IMAP-Port');
+            }
+            if ($key === 'reminder_days' && ($value < 1 || $value > 365)) {
+                throw new ValidationException('Die Tage bis zur Erinnerung müssen zwischen 1 und 365 liegen');
+            }
+            if ($key === 'reminder_max' && ($value < 1 || $value > 10)) {
+                throw new ValidationException('Höchstens 1 bis 10 Erinnerungen');
             }
             return $value;
         }

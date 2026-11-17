@@ -91,6 +91,7 @@ class SettingsController extends Controller {
             'imapPasswordSet' => $this->settings->hasImapPassword(),
             'sponsorPlaceholders' => SponsorTemplate::PLACEHOLDERS,
             'confirmPlaceholders' => SponsorTemplate::CONFIRM_PLACEHOLDERS,
+            'declinePlaceholders' => SponsorTemplate::DECLINE_PLACEHOLDERS,
         ];
     }
 }

@@ -70,6 +70,10 @@ use OCP\AppFramework\Db\Entity;
  * @method void setOutcomeAt(?int $timestamp)
  * @method int|null getLastReplyAt()
  * @method void setLastReplyAt(?int $timestamp)
+ * @method int|null getRemindedAt()
+ * @method void setRemindedAt(?int $timestamp)
+ * @method int|null getReminderCount()
+ * @method void setReminderCount(?int $count)
  * @method string|null getResponseBy()
  * @method void setResponseBy(?string $uid)
  * @method int|null getReceiptId()
@@ -132,6 +136,8 @@ class Inquiry extends Entity implements JsonSerializable {
     protected $outcomeBy;
     protected $outcomeAt;
     protected $lastReplyAt;
+    protected $remindedAt;
+    protected $reminderCount;
     protected $responseBy;
     protected $receiptId;
     protected $createdBy;
@@ -149,6 +155,8 @@ class Inquiry extends Entity implements JsonSerializable {
         $this->addType('receiptId', 'integer');
         $this->addType('outcomeAt', 'integer');
         $this->addType('lastReplyAt', 'integer');
+        $this->addType('remindedAt', 'integer');
+        $this->addType('reminderCount', 'integer');
         $this->addType('createdAt', 'integer');
         $this->addType('updatedAt', 'integer');
     }
@@ -168,6 +176,12 @@ class Inquiry extends Entity implements JsonSerializable {
     /** Pledged with the data for the receipt (the amount counts). */
     public function isPledged(): bool {
         return $this->hasResponse() && $this->getEffectiveOutcome() === self::OUTCOME_PLEDGED;
+    }
+
+    /** When we last wrote to the sponsor about this campaign (letter or reminder). */
+    public function getLastContactAt(): ?int {
+        $times = array_filter([$this->sentAt, $this->remindedAt], static fn ($t) => $t !== null);
+        return $times === [] ? null : max($times);
     }
 
     /** The donation has arrived and the receipt exists. */
@@ -236,6 +250,8 @@ class Inquiry extends Entity implements JsonSerializable {
             'outcomeBy' => $this->outcomeBy,
             'outcomeAt' => $this->outcomeAt,
             'lastReplyAt' => $this->lastReplyAt,
+            'remindedAt' => $this->remindedAt,
+            'reminderCount' => (int)$this->reminderCount,
             'hasLogo' => $this->logoFileId !== null,
             'receiptId' => $this->receiptId,
             'createdAt' => $this->createdAt,

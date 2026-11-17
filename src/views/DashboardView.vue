@@ -23,6 +23,8 @@
 				{{ bescheidState.text }}
 			</NcNoteCard>
 
+			<SponsoringCard />
+
 			<NcEmptyContent v-if="!hasAnyReceipt"
 				name="Noch keine Bescheinigungen"
 				description="Sobald Bescheinigungen erstellt sind, siehst du hier Summen, Verläufe und offene Aufgaben.">
@@ -218,6 +220,7 @@ import { errorMessage, getStats } from '../api.js'
 import ColumnChart from '../components/charts/ColumnChart.vue'
 import SendStatus from '../components/charts/SendStatus.vue'
 import StatTile from '../components/charts/StatTile.vue'
+import SponsoringCard from '../components/SponsoringCard.vue'
 import { formatAmount, formatDate } from '../format.js'
 
 const MONTHS = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez']

@@ -54,6 +54,8 @@ class InquiryServiceTest extends TestCase {
     private Sponsor $sponsor;
     private Inquiry $inquiry;
     private InquiryService $service;
+    /** @var array<string, mixed> values of SettingsService::get() */
+    private array $settingValues = [];
 
     protected function setUp(): void {
         $this->campaign = new Campaign();
@@ -86,7 +88,7 @@ class InquiryServiceTest extends TestCase {
             'org_name' => 'Förderverein e.V.',
             default => '{anrede}|{link}',
         });
-        $this->settings->method('get')->willReturn(0);
+        $this->settings->method('get')->willReturnCallback(fn (string $key) => $this->settingValues[$key] ?? 0);
         $this->sender = $this->createMock(SmtpSender::class);
         $this->sender->method('newEmail')->willReturnCallback(
             static fn (string $account, string $to, string $subject, string $body) => (new Email())->to($to)->subject($subject)->text($body)
@@ -399,5 +401,89 @@ class InquiryServiceTest extends TestCase {
         $results = $this->service->sendLetters(3, [9], 'Betreff', 'Text', 'kasse');
         $this->assertStringContainsString('abgesagt', $results[0]['error']);
         $this->assertNull($this->inquiry->getSentAt());
+    }
+
+    public function testDeclineInFormNotifiesAndConfirms(): void {
+        $this->settings->method('missingForMail')->willReturn([]);
+        $this->sponsorService->expects($this->once())->method('setNoContact')->with($this->sponsor, true)->willReturn($this->sponsor);
+        $this->groupNotifier->expects($this->once())->method('declined');
+        $this->groupNotifier->expects($this->never())->method('response');
+        $this->sender->expects($this->once())->method('send');
+
+        $view = $this->service->respond(self::TOKEN, ['answer' => 'no_contact', 'message' => ' Bitte nicht mehr '], null);
+
+        $this->assertSame(Inquiry::OUTCOME_NO_CONTACT, $view['outcome']);
+        $this->assertSame('Bitte nicht mehr', $view['outcomeNote']);
+        $this->assertNull($this->inquiry->getOutcomeBy());
+        $this->assertFalse($this->inquiry->hasResponse());
+    }
+
+    public function testDeclineRejectsUnknownAnswer(): void {
+        $this->expectException(ValidationException::class);
+        $this->service->respond(self::TOKEN, ['answer' => 'maybe'], null);
+    }
+
+    public function testPledgeAfterDeclineClearsMessage(): void {
+        $this->settings->method('missingForMail')->willReturn(['SMTP-Server']);
+        $this->service->respond(self::TOKEN, ['answer' => 'declined', 'message' => 'nein'], null);
+        $this->service->respond(self::TOKEN, self::RESPONSE, null);
+        $this->assertSame(Inquiry::OUTCOME_PLEDGED, $this->inquiry->getOutcome());
+        $this->assertNull($this->inquiry->getOutcomeNote());
+    }
+
+    public function testReminderIsDueAfterTheConfiguredDays(): void {
+        $this->settingValues = ['reminder_days' => 14, 'reminder_max' => 2];
+        $this->inquiry->setSentAt(1_800_000_000 - 15 * 86400);
+
+        $this->assertTrue($this->service->isReminderDue($this->inquiry, $this->sponsor, $this->campaign));
+
+        $this->inquiry->setRemindedAt(1_800_000_000 - 3 * 86400);
+        $this->assertFalse($this->service->isReminderDue($this->inquiry, $this->sponsor, $this->campaign), 'reminded recently');
+
+        $this->inquiry->setRemindedAt(1_800_000_000 - 20 * 86400);
+        $this->inquiry->setReminderCount(2);
+        $this->assertFalse($this->service->isReminderDue($this->inquiry, $this->sponsor, $this->campaign), 'maximum reached');
+    }
+
+    public function testOnlyOpenAnswersGetReminders(): void {
+        $this->inquiry->setSentAt(1);
+        $this->assertTrue($this->service->isRemindable($this->inquiry, $this->sponsor, $this->campaign));
+
+        $this->inquiry->setLastReplyAt(2);
+        $this->assertFalse($this->service->isRemindable($this->inquiry, $this->sponsor, $this->campaign), 'reply mail without status');
+
+        $this->inquiry->setOutcome(Inquiry::OUTCOME_INCOMPLETE);
+        $this->assertTrue($this->service->isRemindable($this->inquiry, $this->sponsor, $this->campaign), 'pledged without data');
+
+        $this->inquiry->setOutcome(Inquiry::OUTCOME_DECLINED);
+        $this->assertFalse($this->service->isRemindable($this->inquiry, $this->sponsor, $this->campaign));
+    }
+
+    public function testSendRemindersUsesTemplateByStatusAndCounts(): void {
+        $this->settings->method('missingForMail')->willReturn([]);
+        $this->inquiry->setSentAt(1);
+        $this->inquiry->setOutcome(Inquiry::OUTCOME_INCOMPLETE);
+        $this->inquiries->method('findByCampaignAndSponsor')->willReturn($this->inquiry);
+        $this->sender->expects($this->once())->method('sendEach')
+            ->with(SettingsService::ACCOUNT_SPONSORS, $this->callback(static fn (array $emails): bool => array_keys($emails) === [9]))
+            ->willReturn([9 => null]);
+
+        $results = $this->service->sendReminders(3, [9]);
+
+        $this->assertNull($results[0]['error']);
+        $this->assertSame(1, $this->inquiry->getReminderCount());
+        $this->assertSame(1_800_000_000, $this->inquiry->getRemindedAt());
+    }
+
+    public function testSendRemindersSkipsAnswered(): void {
+        $this->settings->method('missingForMail')->willReturn([]);
+        $this->inquiry->setSentAt(1);
+        $this->inquiry->setOutcome(Inquiry::OUTCOME_LATER);
+        $this->inquiries->method('findByCampaignAndSponsor')->willReturn($this->inquiry);
+        $this->sender->expects($this->never())->method('sendEach');
+
+        $results = $this->service->sendReminders(3, [9]);
+
+        $this->assertStringContainsString('keine Erinnerung', $results[0]['error']);
     }
 }

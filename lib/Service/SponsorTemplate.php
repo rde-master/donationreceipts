@@ -34,6 +34,26 @@ class SponsorTemplate {
         . "automatisch zugesandt. Bis dahin können Sie Ihre Angaben über diesen Link ändern:\n{link}\n\n"
         . "Mit freundlichen Grüßen\n{verein}";
 
+    public const DEFAULT_DECLINE_SUBJECT = 'Ihre Antwort zu {aktion}';
+    public const DEFAULT_DECLINE_BODY = "{anrede},\n\n"
+        . "vielen Dank für Ihre Antwort – schade, dass es diesmal nicht klappt. Wir haben uns notiert: {antwort}.\n\n"
+        . "Sollten Sie es sich anders überlegen, können Sie uns Ihre Unterstützung jederzeit über diesen Link mitteilen:\n{link}\n\n"
+        . "Mit freundlichen Grüßen\n{verein}";
+
+    public const DEFAULT_REMINDER_SUBJECT = 'Erinnerung: Ihre Unterstützung für {aktion}';
+    public const DEFAULT_REMINDER_BODY = "{anrede},\n\n"
+        . "vor einiger Zeit haben wir Sie gefragt, ob Sie {aktion} unterstützen möchten. Vielleicht ist unsere "
+        . "Nachricht untergegangen – wir würden uns sehr über eine kurze Antwort freuen, gerne auch eine Absage.\n\n"
+        . "Über diesen Link geht es in einer Minute:\n{link}\n\n"
+        . "Mit freundlichen Grüßen\n{verein}";
+
+    public const DEFAULT_REMINDER_INCOMPLETE_SUBJECT = 'Noch ein Schritt: Ihre Angaben für {aktion}';
+    public const DEFAULT_REMINDER_INCOMPLETE_BODY = "{anrede},\n\n"
+        . "vielen Dank, dass Sie {aktion} unterstützen möchten! Damit wir Ihnen die Zuwendungsbestätigung "
+        . "(Spendenbescheinigung) ausstellen können, fehlen uns noch einige Angaben wie Anschrift und Betrag.\n\n"
+        . "Bitte tragen Sie sie über diesen Link ein:\n{link}\n\n"
+        . "Mit freundlichen Grüßen\n{verein}";
+
     /** Placeholders of letters and the response form (shown in the UI). */
     public const PLACEHOLDERS = [
         'anrede' => 'Briefanrede des Sponsors',
@@ -48,6 +68,17 @@ class SponsorTemplate {
     /** Additionally available in the confirmation mail. */
     public const CONFIRM_PLACEHOLDERS = self::PLACEHOLDERS + [
         'angaben' => 'Die Angaben aus der Rückmeldung',
+    ];
+
+    /** Additionally available in the confirmation of a decline. */
+    public const DECLINE_PLACEHOLDERS = self::PLACEHOLDERS + [
+        'antwort' => 'Die Antwort („diesmal nicht“ / „bitte keine Anfragen mehr“)',
+    ];
+
+    /** How a decline is quoted in the confirmation ({antwort}). */
+    public const DECLINE_TEXTS = [
+        Inquiry::OUTCOME_DECLINED => 'diesmal nicht',
+        Inquiry::OUTCOME_NO_CONTACT => 'bitte keine Anfragen mehr',
     ];
 
     public const TICKET_LABELS = [

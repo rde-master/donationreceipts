@@ -4,6 +4,28 @@ Alle Änderungen der App, neueste zuerst. Versionen nach [SemVer](https://semver
 Fehlerbehebung erhöht die dritte Stelle, neue Funktionen die zweite, mit der Abnahme kommt 1.0.0.
 Jede Version hat einen Git-Tag `v<version>`.
 
+## 0.13.0 – 2026-11-17
+
+- **Absage im Rückmeldeformular**: Sponsoren wählen oben „Ja, wir unterstützen …“, „Diesmal leider
+  nicht“ oder „Bitte keine Anfragen mehr“ – eine Absage geht ohne Pflichtfelder, mit optionaler
+  Nachricht. Der Status wird gesetzt („bitte keine Anfragen mehr“ auch am Sponsor), die Gruppe
+  benachrichtigt und der Sponsor bekommt eine Bestätigung. Die Antwort lässt sich über denselben
+  Link ändern; eine spätere Zusage hebt „nicht mehr anschreiben“ wieder auf.
+- **Erinnerungen**: zwei Vorlagen („ohne Antwort“ und „Zusage – Angaben fehlen noch“), fällig nach
+  einstellbaren Tagen (Standard 14) seit Anschreiben bzw. letzter Erinnerung, höchstens N-mal
+  (Standard 2). In der Aktion: Hinweis „Erinnerung fällig“, Filter, „fällige auswählen“ und
+  „Erinnerung an …“ mit Vorschau; je Sponsor sichtbar, wann zuletzt erinnert wurde. Wahlweise
+  täglich automatischer Versand (Hintergrundjob, standardmäßig aus). Nie bei Absagen, „nicht mehr
+  anschreiben“, unbearbeiteten Antwort-Mails oder geschlossenen Aktionen.
+- **Vorlagen**: Unter „Vorlagen“ stehen jetzt alle automatischen Mails an Sponsoren – Bestätigung
+  Zusage (bisher in den Einstellungen), Bestätigung Absage, beide Erinnerungen – und die
+  Erinnerungs-Einstellungen.
+- **Übersicht**: neue Karte „Sponsoring“ mit jeder offenen Aktion (angeschrieben, Zusagen und
+  Betrag, eingegangen, Absagen, ohne Antwort, Antwort-Mails ohne Status, Zusagen ohne Angaben,
+  fällige Erinnerungen, Antwortquote) und den offenen Antwort-Mails. Die Aktionsliste zeigt Absagen
+  und offene Aufgaben.
+- Neue Spalten `dr_inquiries.reminded_at`, `reminder_count` (`occ upgrade`).
+
 ## 0.12.0 – 2026-11-17
 
 - **Antwort-Mails werden in der Aktion erkannt**: Eine zugeordnete Antwort auf ein Anschreiben

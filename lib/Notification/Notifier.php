@@ -44,9 +44,13 @@ class Notifier implements INotifier {
             $notification->setParsedSubject("Antwort-Mail von {$sponsor}" . ($campaign !== '' ? " zu „{$campaign}“" : '') . ' – bitte bearbeiten');
             $notification->setLink($base . '#/antworten');
         } else {
-            $notification->setParsedSubject(!empty($params['update'])
-                ? "{$sponsor} hat die Rückmeldung zu „{$campaign}“ geändert"
-                : "{$sponsor} hat auf „{$campaign}“ geantwortet");
+            if (!empty($params['declined'])) {
+                $notification->setParsedSubject("{$sponsor} hat für „{$campaign}“ abgesagt ({$params['declined']})");
+            } else {
+                $notification->setParsedSubject(!empty($params['update'])
+                    ? "{$sponsor} hat die Rückmeldung zu „{$campaign}“ geändert"
+                    : "{$sponsor} hat auf „{$campaign}“ geantwortet");
+            }
             $notification->setLink($base . '#/aktionen/' . (int)($params['campaignId'] ?? 0));
         }
         $notification->setIcon($this->urlGenerator->getAbsoluteURL($this->urlGenerator->imagePath(Application::APP_ID, 'app-dark.svg')));
