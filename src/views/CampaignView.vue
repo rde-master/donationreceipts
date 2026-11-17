@@ -1,5 +1,5 @@
 <template>
-	<div class="dr-page dr-page--wide dr-viz">
+	<div class="dr-page dr-viz">
 		<NcLoadingIcon v-if="!data" :size="32" />
 		<template v-else>
 			<div class="dr-header">

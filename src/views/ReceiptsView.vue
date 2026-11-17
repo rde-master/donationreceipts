@@ -1,5 +1,5 @@
 <template>
-	<div class="dr-page dr-page--wide">
+	<div class="dr-page">
 		<div class="dr-header">
 			<h2>Bescheinigungen</h2>
 			<span class="dr-muted">Nächste Nummer: {{ nextNumber }}</span>

@@ -4,6 +4,12 @@ Alle Änderungen der App, neueste zuerst. Versionen nach [SemVer](https://semver
 Fehlerbehebung erhöht die dritte Stelle, neue Funktionen die zweite, mit der Abnahme kommt 1.0.0.
 Jede Version hat einen Git-Tag `v<version>`.
 
+## 0.18.1 – 2026-11-17
+
+- Alle Seiten der App nutzen die **volle Breite** des Inhaltsbereichs (bisher auf 900 bzw.
+  1100 px begrenzt, Formulare auf 700 px). Kleine Bedienelemente wie Suchfeld und Filter
+  behalten ihre Breite.
+
 ## 0.18.0 – 2026-11-17
 
 - **Übersichten mit kleinen Grafiken** über den Listen:

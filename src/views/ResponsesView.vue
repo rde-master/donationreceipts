@@ -1,5 +1,5 @@
 <template>
-	<div class="dr-page dr-page--wide dr-viz">
+	<div class="dr-page dr-viz">
 		<div class="dr-header">
 			<h2>Zusagen</h2>
 			<NcButton :disabled="!filtered.length" @click="exportCsv">
