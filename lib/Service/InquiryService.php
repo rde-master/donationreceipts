@@ -302,6 +302,26 @@ class InquiryService {
             'logoUpload' => $this->logoUploadPossible($inquiry),
             'hasLogo' => $inquiry->getLogoFileId() !== null,
             'tickets' => SponsorTemplate::TICKET_LABELS,
+            'answers' => $this->answerTexts($values),
+        ];
+    }
+
+    /**
+     * Wording of the answer choices on the response form (settings, empty =
+     * default), placeholders filled in.
+     *
+     * @param array<string, string> $values placeholder values
+     * @return array{yes: array{label: string}, declined: array{label: string, hint: string}, no_contact: array{label: string, hint: string}}
+     */
+    private function answerTexts(array $values): array {
+        $text = function (string $key) use ($values): string {
+            $value = trim($this->settings->getString($key));
+            return MailTemplate::render($value !== '' ? $value : SponsorTemplate::ANSWER_TEXTS[$key], $values);
+        };
+        return [
+            'yes' => ['label' => $text('answer_yes_label')],
+            'declined' => ['label' => $text('answer_declined_label'), 'hint' => $text('answer_declined_hint')],
+            'no_contact' => ['label' => $text('answer_no_contact_label'), 'hint' => $text('answer_no_contact_hint')],
         ];
     }
 

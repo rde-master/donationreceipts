@@ -86,6 +86,8 @@ class InquiryServiceTest extends TestCase {
         $this->settings = $this->createMock(SettingsService::class);
         $this->settings->method('getString')->willReturnCallback(static fn (string $key): string => match ($key) {
             'org_name' => 'Förderverein e.V.',
+            'answer_yes_label' => '',
+            'answer_declined_label' => 'Leider nicht für {aktion}',
             default => '{anrede}|{link}',
         });
         $this->settings->method('get')->willReturnCallback(fn (string $key) => $this->settingValues[$key] ?? 0);
@@ -515,5 +517,12 @@ class InquiryServiceTest extends TestCase {
         $this->assertSame('declined', $history['last']['state']);
         $this->assertSame(3, $history['last']['campaignId']);
         $this->assertSame(250, $history['last']['at']);
+    }
+
+    public function testAnswerTextsComeFromSettingsWithDefaultFallback(): void {
+        $answers = $this->service->publicView(self::TOKEN)['answers'];
+        $this->assertSame('Ja, wir unterstützen Sommerfest 2027', $answers['yes']['label']);
+        $this->assertSame('Leider nicht für Sommerfest 2027', $answers['declined']['label']);
+        $this->assertArrayHasKey('no_contact', $answers);
     }
 }

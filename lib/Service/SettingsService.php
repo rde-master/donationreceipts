@@ -70,6 +70,12 @@ class SettingsService {
         'response_intro' => ['type' => 'string', 'default' => SponsorTemplate::DEFAULT_INTRO],
         'confirm_subject' => ['type' => 'string', 'default' => SponsorTemplate::DEFAULT_CONFIRM_SUBJECT],
         'confirm_body' => ['type' => 'string', 'default' => SponsorTemplate::DEFAULT_CONFIRM_BODY],
+        // Antwortmöglichkeiten im Rückmeldeformular (nur die Anzeige; leer = Standardtext)
+        'answer_yes_label' => ['type' => 'string', 'default' => SponsorTemplate::ANSWER_TEXTS['answer_yes_label']],
+        'answer_declined_label' => ['type' => 'string', 'default' => SponsorTemplate::ANSWER_TEXTS['answer_declined_label']],
+        'answer_declined_hint' => ['type' => 'string', 'default' => SponsorTemplate::ANSWER_TEXTS['answer_declined_hint']],
+        'answer_no_contact_label' => ['type' => 'string', 'default' => SponsorTemplate::ANSWER_TEXTS['answer_no_contact_label']],
+        'answer_no_contact_hint' => ['type' => 'string', 'default' => SponsorTemplate::ANSWER_TEXTS['answer_no_contact_hint']],
         // Bestätigung einer Absage über das Formular
         'decline_subject' => ['type' => 'string', 'default' => SponsorTemplate::DEFAULT_DECLINE_SUBJECT],
         'decline_body' => ['type' => 'string', 'default' => SponsorTemplate::DEFAULT_DECLINE_BODY],

@@ -24,7 +24,7 @@
 						Die Aktion ist beendet; Rückmeldungen sind nicht mehr möglich.
 					</NcNoteCard>
 					<NcNoteCard v-else-if="declinedBefore" type="info">
-						Sie haben uns mitgeteilt: {{ ANSWERS[state.outcome].short }}. Falls Sie es sich anders überlegen,
+						Sie haben uns mitgeteilt: „{{ answers[state.outcome].label }}“. Falls Sie es sich anders überlegen,
 						können Sie Ihre Antwort hier ändern.
 					</NcNoteCard>
 					<NcNoteCard v-else-if="state.respondedAt" type="info">
@@ -35,22 +35,20 @@
 
 				<section v-if="state.editable" class="dr-public__card dr-public__answer">
 					<h3>Ihre Antwort</h3>
-					<NcCheckboxRadioSwitch v-for="(option, value) in ANSWERS"
+					<NcCheckboxRadioSwitch v-for="(option, value) in answers"
 						:key="value"
 						v-model="answer"
 						type="radio"
 						:value="value"
 						name="dr-answer">
-						{{ option.label.replace('{aktion}', state.campaign) }}
+						{{ option.label }}
 					</NcCheckboxRadioSwitch>
 				</section>
 
 				<section v-if="answer !== 'yes'" class="dr-public__card dr-public__decline">
-					<h3>{{ answer === 'no_contact' ? 'Keine Anfragen mehr' : 'Diesmal nicht' }}</h3>
-					<p class="dr-muted">
-						{{ answer === 'no_contact'
-							? 'Schade! Wir nehmen Sie aus unserem Verteiler und schreiben Sie nicht mehr an.'
-							: 'Schade – vielleicht klappt es beim nächsten Mal. Für diese Aktion fragen wir nicht mehr nach.' }}
+					<h3>{{ answers[answer].label }}</h3>
+					<p v-if="answers[answer].hint" class="dr-muted dr-pre">
+						{{ answers[answer].hint }}
 					</p>
 					<NcTextArea v-model="message"
 						label="Möchten Sie uns noch etwas mitteilen? (optional)"
@@ -85,7 +83,7 @@
 			<!-- results of saving right above the button, where the user looks -->
 			<div v-if="saved || error || logoWarning" class="dr-shell__messages">
 				<NcNoteCard v-if="saved && answer !== 'yes'" type="success">
-					Vielen Dank für Ihre Antwort – wir haben uns notiert: {{ ANSWERS[answer].short }}. Sie können sie
+					Vielen Dank für Ihre Antwort – wir haben uns notiert: „{{ answers[answer].label }}“. Sie können sie
 					über diesen Link jederzeit ändern.
 				</NcNoteCard>
 				<NcNoteCard v-else-if="saved" type="success">
@@ -102,7 +100,7 @@
 			<div class="dr-shell__bar-inner">
 				<p class="dr-public__missing" :class="{ 'dr-public__missing--ok': missing.length === 0 }">
 					<template v-if="answer !== 'yes'">
-						{{ ANSWERS[answer].short }}
+						{{ answers[answer].label }}
 					</template>
 					<template v-else-if="missing.length">
 						Noch offen: {{ missing.join(', ') }}
@@ -142,14 +140,10 @@ import { responseMissing, responseForm, responsePayload } from '../responseForm.
 
 const MAX_LOGO_BYTES = 10 * 1024 * 1024
 
-// the sponsor's answer; the declines need no data
-const ANSWERS = {
-	yes: { label: 'Ja, wir unterstützen {aktion}', short: 'Zusage' },
-	declined: { label: 'Diesmal leider nicht', short: 'diesmal nicht' },
-	no_contact: { label: 'Bitte keine Anfragen mehr', short: 'bitte keine Anfragen mehr' },
-}
-
 const state = ref(loadState('donationreceipts', 'response'))
+// the sponsor's answer (wording from the settings; the keys are the status
+// behind it and never change); the declines need no data
+const answers = computed(() => state.value.answers)
 const form = ref(responseForm(state.value.response))
 const logo = ref(null)
 const logoInput = ref(null)
@@ -157,7 +151,7 @@ const saving = ref(false)
 const saved = ref(false)
 const error = ref('')
 const logoWarning = ref('')
-const answer = ref(ANSWERS[state.value.outcome] && state.value.outcome !== 'pledged' ? state.value.outcome : 'yes')
+const answer = ref(['declined', 'no_contact'].includes(state.value.outcome) ? state.value.outcome : 'yes')
 const message = ref(state.value.outcomeNote ?? '')
 
 // the sponsor said no before (and has not changed it in this visit)

@@ -262,6 +262,32 @@
 						<code>{{ '{' + key + '}' }}</code> {{ label }}
 					</span>
 				</p>
+
+				<h4>Antwortmöglichkeiten im Formular</h4>
+				<p class="dr-muted">
+					Ändert nur die Texte, die Sponsoren im Formular sehen. Dahinter bleibt der Status gleich
+					(„Zusage“, „Diesmal nicht“, „Bitte nicht mehr anschreiben“) – in der App, in Filtern und
+					Auswertungen ändert sich nichts. Leer = Standardtext; Platzhalter wie oben.
+				</p>
+				<NcTextField v-model="values.answer_yes_label"
+					label="Zusage"
+					:placeholder="answerDefaults.answer_yes_label" />
+				<NcTextField v-model="values.answer_declined_label"
+					label="Absage für diese Aktion (Status „Diesmal nicht“)"
+					:placeholder="answerDefaults.answer_declined_label" />
+				<NcTextArea v-model="values.answer_declined_hint"
+					label="Hinweis bei dieser Absage"
+					:placeholder="answerDefaults.answer_declined_hint"
+					resize="vertical"
+					rows="2" />
+				<NcTextField v-model="values.answer_no_contact_label"
+					label="Keine Anfragen mehr (Status „Bitte nicht mehr anschreiben“)"
+					:placeholder="answerDefaults.answer_no_contact_label" />
+				<NcTextArea v-model="values.answer_no_contact_hint"
+					label="Hinweis bei „keine Anfragen mehr“"
+					:placeholder="answerDefaults.answer_no_contact_hint"
+					resize="vertical"
+					rows="2" />
 			</section>
 
 			<section>
@@ -363,6 +389,7 @@ const sponsorSmtpPassword = ref('')
 const sponsorSmtpPasswordSet = ref(false)
 const sponsorMailMissing = ref([])
 const sponsorPlaceholders = ref({})
+const answerDefaults = ref({})
 const sponsorTestAddress = ref(getCurrentUser()?.email ?? '')
 const imapPassword = ref('')
 const imapPasswordSet = ref(false)
@@ -408,6 +435,7 @@ function apply(data) {
 	sponsorSmtpPasswordSet.value = data.sponsorSmtpPasswordSet
 	sponsorMailMissing.value = data.sponsorMailMissing
 	sponsorPlaceholders.value = data.sponsorPlaceholders
+	answerDefaults.value = data.answerDefaults
 	sponsorSmtpPassword.value = ''
 	imapPasswordSet.value = data.imapPasswordSet
 	imapPassword.value = ''

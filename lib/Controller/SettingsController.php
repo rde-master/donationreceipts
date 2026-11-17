@@ -92,6 +92,7 @@ class SettingsController extends Controller {
             'sponsorPlaceholders' => SponsorTemplate::PLACEHOLDERS,
             'confirmPlaceholders' => SponsorTemplate::CONFIRM_PLACEHOLDERS,
             'declinePlaceholders' => SponsorTemplate::DECLINE_PLACEHOLDERS,
+            'answerDefaults' => SponsorTemplate::ANSWER_TEXTS,
         ];
     }
 }

@@ -4,6 +4,14 @@ Alle Änderungen der App, neueste zuerst. Versionen nach [SemVer](https://semver
 Fehlerbehebung erhöht die dritte Stelle, neue Funktionen die zweite, mit der Abnahme kommt 1.0.0.
 Jede Version hat einen Git-Tag `v<version>`.
 
+## 0.15.0 – 2026-11-17
+
+- **Antwortmöglichkeiten im Rückmeldeformular anpassbar** (Einstellungen → Rückmeldeformular):
+  Text für die Zusage, für „diesmal nicht“ und für „keine Anfragen mehr“ sowie die Hinweise unter
+  den beiden Absagen, mit Platzhaltern wie `{aktion}`. Das ändert nur die Anzeige im Formular –
+  der Status dahinter („Zusage“, „Diesmal nicht“, „Bitte nicht mehr anschreiben“) und damit
+  Filter, Auswertungen und Erinnerungen bleiben gleich. Leeres Feld = Standardtext.
+
 ## 0.14.0 – 2026-11-17
 
 - **Mögliche Sponsoren**: Die Liste zeigt je Sponsor die **letzte Rückmeldung** (Status, Aktion mit

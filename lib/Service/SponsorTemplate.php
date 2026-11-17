@@ -54,6 +54,19 @@ class SponsorTemplate {
         . "Bitte tragen Sie sie über diesen Link ein:\n{link}\n\n"
         . "Mit freundlichen Grüßen\n{verein}";
 
+    /**
+     * Answer choices at the top of the response form: only the wording on
+     * the page is configurable; the status behind them stays the same.
+     * Setting key => default text.
+     */
+    public const ANSWER_TEXTS = [
+        'answer_yes_label' => 'Ja, wir unterstützen {aktion}',
+        'answer_declined_label' => 'Diesmal leider nicht',
+        'answer_declined_hint' => 'Schade – vielleicht klappt es beim nächsten Mal. Für diese Aktion fragen wir nicht mehr nach.',
+        'answer_no_contact_label' => 'Bitte keine Anfragen mehr',
+        'answer_no_contact_hint' => 'Schade! Wir nehmen Sie aus unserem Verteiler und schreiben Sie nicht mehr an.',
+    ];
+
     /** Placeholders of letters and the response form (shown in the UI). */
     public const PLACEHOLDERS = [
         'anrede' => 'Briefanrede des Sponsors',
