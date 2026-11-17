@@ -159,4 +159,39 @@ class ReplyServiceTest extends TestCase {
         $this->assertSame(45, $store['imap_last_uid']);
         $this->assertSame(7, $store['imap_uid_validity']);
     }
+
+    public function testStatsCountOpenDoneAutoAndWithoutStatus(): void {
+        $make = static function (string $status, int $receivedAt, ?int $campaignId, ?int $inquiryId, ?string $note = null, ?string $doneBy = null): Reply {
+            $r = new Reply();
+            $r->setStatus($status);
+            $r->setReceivedAt($receivedAt);
+            $r->setCampaignId($campaignId);
+            $r->setInquiryId($inquiryId);
+            $r->setNote($note);
+            $r->setDoneBy($doneBy);
+            return $r;
+        };
+        $now = 1_800_000_000;
+        $this->replies->method('findAll')->willReturn([
+            $make(Reply::STATUS_OPEN, $now - 86400, 3, 5),
+            $make(Reply::STATUS_OPEN, $now - 20 * 86400, null, null),
+            $make(Reply::STATUS_DONE, $now - 2 * 86400, 3, 5, 'erledigt', 'kasse'),
+            $make(Reply::STATUS_DONE, $now - 3600, 3, 5, Reply::AUTO_NOTE),
+        ]);
+        $this->inquiries->method('find')->willReturn($this->inquiry);
+
+        $stats = $this->service->stats();
+
+        $this->assertSame(2, $stats['open']);
+        $this->assertSame($now - 20 * 86400, $stats['oldestOpenAt']);
+        $this->assertSame(1, $stats['done']);
+        $this->assertSame(1, $stats['auto']);
+        $this->assertSame(2, $stats['lastWeek']);
+        $this->assertSame(1, $stats['unassigned']);
+        $this->assertSame(1, $stats['withoutStatus'], 'inquiry 5 has no status - counted once');
+        $this->assertSame(4, $stats['total']);
+        $this->assertCount(12, $stats['weeks']);
+        $this->assertSame(2, $stats['weeks'][11]['count'], 'this week, auto-reply not counted');
+        $this->assertSame(1, $stats['weeks'][9]['count'], '20 days ago');
+    }
 }

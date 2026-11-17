@@ -60,6 +60,7 @@ class ReplyController extends Controller {
                 'outcome' => $outcome($r->getInquiryId()),
             ], $this->replies->list($status !== '' ? $status : null, $campaignId)),
             'enabled' => $this->replies->isEnabled(),
+            'stats' => $this->replies->stats(),
         ] + $this->replies->state());
     }
 

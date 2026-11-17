@@ -10,7 +10,13 @@
 		<p v-if="!open.length" class="dr-muted">
 			Keine offene Aktion.
 		</p>
-		<ul v-else class="dr-sponsoring__list">
+		<ul v-if="open.length" class="dr-sponsoring__legend" aria-hidden="true">
+			<li v-for="g in ANSWER_GROUPS" :key="g.key">
+				<span class="dr-sponsoring__swatch" :style="{ background: `var(${g.color})` }" />
+				{{ g.label }}
+			</li>
+		</ul>
+		<ul v-if="open.length" class="dr-sponsoring__list">
 			<li v-for="c in open" :key="c.id" class="dr-sponsoring__item">
 				<RouterLink :to="{ name: 'campaign', params: { id: c.id } }" class="dr-sponsoring__name">
 					{{ c.name }}
@@ -35,9 +41,10 @@
 						{{ c.summary.reminderDue }} Erinnerungen fällig
 					</span>
 				</div>
-				<div class="dr-sponsoring__bar" :title="`${c.summary.responded} von ${c.summary.sent} haben geantwortet`">
-					<div class="dr-sponsoring__fill" :style="{ width: `${c.summary.sent ? Math.min(100, 100 * c.summary.responded / c.summary.sent) : 0}%` }" />
-				</div>
+				<AnswerBar class="dr-sponsoring__bar"
+					:counts="answerCountsFromSummary(c.summary)"
+					:label="`Antworten zu ${c.name}`"
+					compact />
 			</li>
 		</ul>
 	</section>
@@ -49,6 +56,8 @@ import NcIconSvgWrapper from '@nextcloud/vue/components/NcIconSvgWrapper'
 import { computed, onMounted, ref } from 'vue'
 import { countOpenReplies, listCampaigns } from '../api.js'
 import { formatAmount } from '../format.js'
+import { answerCountsFromSummary, ANSWER_GROUPS } from '../outcome.js'
+import AnswerBar from './charts/AnswerBar.vue'
 
 const campaigns = ref([])
 const openReplies = ref(0)
@@ -114,15 +123,24 @@ onMounted(async () => {
 }
 
 .dr-sponsoring__bar {
-	height: 6px;
 	margin-top: calc(var(--default-grid-baseline) * 2);
-	border-radius: 3px;
-	background: var(--color-background-dark);
-	overflow: hidden;
 }
 
-.dr-sponsoring__fill {
-	height: 100%;
-	background: var(--color-primary-element);
+.dr-sponsoring__legend {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--default-grid-baseline) calc(var(--default-grid-baseline) * 3);
+	margin-top: calc(var(--default-grid-baseline) * 2);
+	font-size: 13px;
+	color: var(--color-text-maxcontrast);
+}
+
+.dr-sponsoring__swatch {
+	display: inline-block;
+	width: 10px;
+	height: 10px;
+	margin-inline-end: 4px;
+	border-radius: 2px;
+	vertical-align: middle;
 }
 </style>

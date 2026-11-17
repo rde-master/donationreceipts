@@ -1,5 +1,5 @@
 <template>
-	<div class="dr-page dr-page--wide">
+	<div class="dr-page dr-page--wide dr-viz">
 		<NcLoadingIcon v-if="!data" :size="32" />
 		<template v-else>
 			<div class="dr-header">
@@ -57,6 +57,14 @@
 					{{ summary.ticketsLater }} melden sich noch · {{ summary.publish }} Logo-Freigaben
 				</StatTile>
 			</div>
+
+			<section v-if="summary.sent" class="dr-answer-chart">
+				<h3>Antworten der Angeschriebenen</h3>
+				<AnswerBar :counts="answerCounts" selectable @select="filterByGroup" />
+				<p v-if="notAsked" class="dr-muted">
+					{{ notAsked }} mögliche Sponsoren noch nicht angeschrieben
+				</p>
+			</section>
 
 			<div class="dr-row dr-toolbar">
 				<NcSelect v-model="filter"
@@ -288,7 +296,8 @@ import ReminderDialog from '../components/ReminderDialog.vue'
 import ResponseDialog from '../components/ResponseDialog.vue'
 import ResponseFormDialog from '../components/ResponseFormDialog.vue'
 import { formatAmount, formatDateTime } from '../format.js'
-import { OUTCOMES, REFUSED } from '../outcome.js'
+import AnswerBar from '../components/charts/AnswerBar.vue'
+import { answerGroupOf, OUTCOMES, REFUSED } from '../outcome.js'
 
 const props = defineProps({
 	id: { type: [String, Number], required: true },
@@ -297,6 +306,7 @@ const props = defineProps({
 const FILTERS = [
 	{ id: 'all', label: 'Alle möglichen Sponsoren' },
 	{ id: 'new', label: 'Noch nicht angeschrieben' },
+	{ id: 'unanswered', label: 'Ohne Antwort / unentschieden (alle)' },
 	{ id: 'waiting', label: 'Ohne Antwort' },
 	{ id: 'replied', label: 'Antwort per Mail – Status offen' },
 	{ id: 'later', label: 'Meldet sich noch' },
@@ -366,6 +376,8 @@ const visibleRows = computed(() => {
 		return rows.value
 	case 'due':
 		return dueRows.value
+	case 'unanswered':
+		return rows.value.filter((row) => ['waiting', 'replied', 'later'].includes(state(row)))
 	default:
 		return rows.value.filter((row) => state(row) === filter.value.id)
 	}
@@ -374,6 +386,28 @@ const visibleRows = computed(() => {
 const dueRows = computed(() => rows.value.filter((row) => row.inquiry?.reminderDue))
 // the selected ones a reminder can go to
 const remindRows = computed(() => rows.value.filter((row) => selected.value.includes(row.sponsor.id) && row.inquiry?.remindable))
+
+// the bar shows answer groups of written-to sponsors
+const answerCounts = computed(() => {
+	const counts = { received: 0, pledged: 0, incomplete: 0, open: 0, declined: 0 }
+	for (const row of rows.value) {
+		// only who was written to (or answered); "nicht mehr anschreiben" without letter is not an answer
+		if (!row.inquiry) {
+			continue
+		}
+		const group = answerGroupOf(state(row))
+		if (group) {
+			counts[group]++
+		}
+	}
+	return counts
+})
+const notAsked = computed(() => rows.value.filter((row) => state(row) === 'new' && !row.sponsor.noContact).length)
+
+function filterByGroup(group) {
+	const id = { received: 'received', pledged: 'open', incomplete: 'incomplete', open: 'unanswered', declined: 'declined' }[group]
+	filter.value = FILTERS.find((f) => f.id === id)
+}
 
 function selectDue() {
 	filter.value = FILTERS.find((f) => f.id === 'due')
@@ -506,6 +540,22 @@ onMounted(load)
 .dr-toolbar__actions {
 	margin-top: 0;
 	flex-wrap: wrap;
+}
+
+.dr-answer-chart {
+	margin-bottom: calc(var(--default-grid-baseline) * 4);
+	padding: calc(var(--default-grid-baseline) * 4);
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large);
+}
+
+.dr-answer-chart h3 {
+	margin: 0 0 calc(var(--default-grid-baseline) * 3);
+	font-size: 16px;
+}
+
+.dr-answer-chart p {
+	margin: calc(var(--default-grid-baseline) * 2) 0 0;
 }
 
 .dr-reminder-rule {

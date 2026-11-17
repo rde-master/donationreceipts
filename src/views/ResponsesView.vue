@@ -1,5 +1,5 @@
 <template>
-	<div class="dr-page dr-page--wide">
+	<div class="dr-page dr-page--wide dr-viz">
 		<div class="dr-header">
 			<h2>Zusagen</h2>
 			<NcButton :disabled="!filtered.length" @click="exportCsv">
@@ -21,6 +21,56 @@
 				:clearable="false"
 				input-label="Status"
 				:label-outside="false" />
+		</div>
+
+		<div v-if="!loading && inCampaign.length" class="dr-overview">
+			<div class="dr-tiles">
+				<StatTile label="Zusagen" :value="String(inCampaign.length)">
+					{{ overview.moneyCount }} Geld · {{ overview.goodsCount }} Sach
+				</StatTile>
+				<StatTile label="Zugesagt" :value="formatAmount(overview.total)">
+					Ø {{ formatAmount(Math.round(overview.total / inCampaign.length)) }} je Zusage
+				</StatTile>
+				<StatTile label="Eingegangen"
+					:value="formatAmount(overview.received)"
+					class="dr-tile-link"
+					@click="showStatus('received')">
+					{{ overview.receivedCount }} von {{ inCampaign.length }} Spenden
+				</StatTile>
+				<StatTile label="Eingang offen"
+					:value="formatAmount(overview.total - overview.received)"
+					class="dr-tile-link"
+					@click="showStatus('open')">
+					{{ inCampaign.length - overview.receivedCount }} Zusagen
+				</StatTile>
+				<StatTile label="Freikarten" :value="String(overview.tickets)">
+					{{ overview.ticketsLater }} melden sich noch · {{ overview.logos }} Logo-Freigaben
+				</StatTile>
+			</div>
+			<div class="dr-charts">
+				<section class="dr-chart-card">
+					<h3>Eingang der zugesagten Beträge</h3>
+					<SegmentBar label="Eingang der zugesagten Beträge"
+						:parts="[
+							{ key: 'received', label: 'eingegangen', value: overview.received, color: '--dr-good', icon: mdiCheckCircle },
+							{ key: 'open', label: 'noch offen', value: overview.total - overview.received, color: '--dr-series-1', icon: mdiHandshakeOutline },
+						]"
+						:format="formatAmount"
+						selectable
+						@select="showStatus" />
+				</section>
+				<section class="dr-chart-card">
+					<h3>{{ campaign.id === null && byCampaign.length > 1 ? 'Zugesagt je Aktion' : 'Größte Zusagen' }}</h3>
+					<BarList v-if="campaign.id === null && byCampaign.length > 1"
+						label="Zugesagter Betrag je Aktion"
+						:items="byCampaign"
+						:format="formatAmount" />
+					<BarList v-else
+						label="Die fünf größten Zusagen"
+						:items="topPledges"
+						:format="formatAmount" />
+				</section>
+			</div>
 		</div>
 
 		<NcLoadingIcon v-if="loading" :size="32" />
@@ -102,7 +152,7 @@
 </template>
 
 <script setup>
-import { mdiClipboardTextOutline, mdiDownload } from '@mdi/js'
+import { mdiCheckCircle, mdiClipboardTextOutline, mdiDownload, mdiHandshakeOutline } from '@mdi/js'
 import { showError } from '@nextcloud/dialogs'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcEmptyContent from '@nextcloud/vue/components/NcEmptyContent'
@@ -111,6 +161,9 @@ import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
 import NcSelect from '@nextcloud/vue/components/NcSelect'
 import { computed, onMounted, ref } from 'vue'
 import { errorMessage, listResponses } from '../api.js'
+import BarList from '../components/charts/BarList.vue'
+import SegmentBar from '../components/charts/SegmentBar.vue'
+import StatTile from '../components/charts/StatTile.vue'
 import ResponseDialog from '../components/ResponseDialog.vue'
 import { formatAmount, formatDateTime } from '../format.js'
 
@@ -133,6 +186,41 @@ const selected = ref(null)
 const campaignOptions = computed(() => [ALL_CAMPAIGNS, ...campaigns.value])
 const filtered = computed(() => inquiries.value.filter((i) => (campaign.value.id === null || i.campaignId === campaign.value.id)
 	&& (status.value.id === 'all' || (status.value.id === 'received') === (i.receiptId !== null))))
+// the overview follows the campaign filter, not the status filter
+const inCampaign = computed(() => inquiries.value.filter((i) => campaign.value.id === null || i.campaignId === campaign.value.id))
+const overview = computed(() => inCampaign.value.reduce((o, i) => {
+	const amount = i.response.amountCents
+	o.total += amount
+	if (i.receiptId) {
+		o.received += amount
+		o.receivedCount++
+	}
+	o[i.response.type === 'goods' ? 'goodsCount' : 'moneyCount']++
+	o.tickets += TICKET_COUNT[i.response.tickets] ?? 0
+	o.ticketsLater += i.response.tickets === 'later' ? 1 : 0
+	o.logos += i.response.publish ? 1 : 0
+	return o
+}, { total: 0, received: 0, receivedCount: 0, moneyCount: 0, goodsCount: 0, tickets: 0, ticketsLater: 0, logos: 0 }))
+const byCampaign = computed(() => {
+	const sums = {}
+	for (const i of inCampaign.value) {
+		const s = sums[i.campaignId] ??= { key: i.campaignId, label: i.campaignName, value: 0, received: 0, to: { name: 'campaign', params: { id: i.campaignId } } }
+		s.value += i.response.amountCents
+		s.received += i.receiptId ? i.response.amountCents : 0
+	}
+	return Object.values(sums)
+		.map((s) => ({ ...s, sub: `davon ${formatAmount(s.received)} eingegangen` }))
+		.sort((a, b) => b.value - a.value)
+})
+const topPledges = computed(() => [...inCampaign.value]
+	.sort((a, b) => b.response.amountCents - a.response.amountCents)
+	.slice(0, 5)
+	.map((i) => ({ key: i.id, label: i.response.displayName, value: i.response.amountCents, sub: i.receiptId ? 'eingegangen' : 'offen' })))
+
+function showStatus(id) {
+	status.value = STATUS.find((s) => s.id === id)
+}
+
 const sum = computed(() => filtered.value.reduce((total, i) => total + i.response.amountCents, 0))
 const tickets = computed(() => filtered.value.reduce((total, i) => total + (TICKET_COUNT[i.response.tickets] ?? 0), 0))
 
@@ -197,6 +285,40 @@ onMounted(load)
 </script>
 
 <style scoped>
+.dr-tiles {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+	gap: calc(var(--default-grid-baseline) * 3);
+	margin: calc(var(--default-grid-baseline) * 4) 0;
+}
+
+.dr-tile-link {
+	cursor: pointer;
+}
+
+.dr-tile-link:hover {
+	border-color: var(--color-primary-element);
+}
+
+.dr-charts {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+	gap: calc(var(--default-grid-baseline) * 3);
+	margin-bottom: calc(var(--default-grid-baseline) * 4);
+}
+
+.dr-chart-card {
+	padding: calc(var(--default-grid-baseline) * 4);
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large);
+	min-width: 0;
+}
+
+.dr-chart-card h3 {
+	margin: 0 0 calc(var(--default-grid-baseline) * 3);
+	font-size: 16px;
+}
+
 .dr-filters {
 	max-width: 600px;
 	margin-bottom: calc(var(--default-grid-baseline) * 4);

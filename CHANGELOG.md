@@ -4,6 +4,25 @@ Alle Änderungen der App, neueste zuerst. Versionen nach [SemVer](https://semver
 Fehlerbehebung erhöht die dritte Stelle, neue Funktionen die zweite, mit der Abnahme kommt 1.0.0.
 Jede Version hat einen Git-Tag `v<version>`.
 
+## 0.18.0 – 2026-11-17
+
+- **Übersichten mit kleinen Grafiken** über den Listen:
+  - **E-Mail-Antworten**: zu bearbeiten (mit Datum der ältesten), Rückmeldungen ohne Status,
+    letzte 7 Tage, erledigt (plus automatische Antworten), keiner Aktion zugeordnet;
+    Säulendiagramm „Antwort-Mails pro Woche“ (12 Wochen). Neue Filter „Rückmeldung ohne Status“
+    und „Keiner Aktion zugeordnet“; Klick auf eine Kachel filtert.
+  - **Zusagen**: Anzahl (Geld/Sach), zugesagt mit Durchschnitt, eingegangen, Eingang offen,
+    Freikarten und Logo-Freigaben; Balken „Eingang der zugesagten Beträge“ und „Zugesagt je
+    Aktion“ bzw. „Größte Zusagen“. Folgt dem Aktionsfilter.
+  - **Aktionen**: Aktionen offen/geschlossen, angeschrieben mit Antwortquote, zugesagt,
+    Absagen, zu erledigen; Antwort-Balken über alle Aktionen, „Zugesagt je Aktion“ und je Aktion
+    ein kleiner Antwort-Balken in der Tabelle.
+- **Antwort-Balken** auch in der einzelnen Aktion, bei den möglichen Sponsoren und auf der
+  Übersicht (Karte Sponsoring): Spende eingegangen · Zusage offen · Angaben fehlen · ohne
+  Antwort/unentschieden · Absage – mit Legende, Tooltip und Klick zum Filtern. Die Farben sind
+  auf Farbsehschwäche geprüft (hell und dunkel).
+- Aktion: neuer Filter „Ohne Antwort / unentschieden (alle)“.
+
 ## 0.17.1 – 2026-11-17
 
 - Menü: „Rückmeldungen“ heißt jetzt **„Zusagen“**, „Antworten“ heißt **„E-Mail-Antworten“**

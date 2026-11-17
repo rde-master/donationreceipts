@@ -1,5 +1,5 @@
 <template>
-	<div class="dr-page">
+	<div class="dr-page dr-viz">
 		<div class="dr-header">
 			<h2>Mögliche Sponsoren</h2>
 			<div class="dr-actions">
@@ -54,6 +54,14 @@
 				class="dr-tile-link"
 				@click="setFilter('declined')" />
 		</div>
+
+		<section v-if="!loading && answerTotal" class="dr-answer-chart">
+			<h3>Letzte Antwort der angeschriebenen Sponsoren</h3>
+			<AnswerBar :counts="answerCounts"
+				label="Letzte Antwort der angeschriebenen Sponsoren"
+				selectable
+				@select="filterByGroup" />
+		</section>
 
 		<div class="dr-row dr-toolbar">
 			<NcTextField v-model="search"
@@ -195,7 +203,8 @@ import { errorMessage, getSponsorOverview, importSponsors, listDonors, listSpons
 import StatTile from '../components/charts/StatTile.vue'
 import SponsorCsvDialog from '../components/SponsorCsvDialog.vue'
 import { formatAmount } from '../format.js'
-import { STATES } from '../outcome.js'
+import AnswerBar from '../components/charts/AnswerBar.vue'
+import { answerGroupOf, STATES } from '../outcome.js'
 
 // filters on the latest inquiry (state) and the sponsor
 const FILTERS = [
@@ -288,6 +297,22 @@ const counts = computed(() => {
 	return c
 })
 
+const answerCounts = computed(() => {
+	const counts = { received: 0, pledged: 0, incomplete: 0, open: 0, declined: 0 }
+	for (const s of sponsors.value) {
+		const group = answerGroupOf(history.value[s.id]?.last?.state)
+		if (group) {
+			counts[group]++
+		}
+	}
+	return counts
+})
+const answerTotal = computed(() => Object.values(answerCounts.value).reduce((a, b) => a + b, 0))
+
+function filterByGroup(group) {
+	setFilter({ received: 'received', pledged: 'pledged', incomplete: 'incomplete', open: 'waiting', declined: 'declined' }[group])
+}
+
 function setFilter(id) {
 	filter.value = FILTERS.find((f) => f.id === id)
 }
@@ -341,6 +366,18 @@ onMounted(load)
 </script>
 
 <style scoped>
+.dr-answer-chart {
+	margin-bottom: calc(var(--default-grid-baseline) * 4);
+	padding: calc(var(--default-grid-baseline) * 4);
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large);
+}
+
+.dr-answer-chart h3 {
+	margin: 0 0 calc(var(--default-grid-baseline) * 3);
+	font-size: 16px;
+}
+
 .dr-tiles {
 	display: grid;
 	grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));

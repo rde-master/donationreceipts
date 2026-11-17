@@ -70,6 +70,62 @@ class ReplyService {
     }
 
     /**
+     * Key figures for the top of the reply page (all replies, independent
+     * of the filter).
+     *
+     * "weeks": replies (no auto-replies) of the last 12 weeks, oldest first;
+     * each week ends at "start" + 7 days, the last one now.
+     *
+     * @return array{open: int, oldestOpenAt: int|null, done: int, auto: int, lastWeek: int, withoutStatus: int, unassigned: int, total: int, weeks: list<array{start: int, count: int}>}
+     */
+    public function stats(): array {
+        $now = $this->time->getTime();
+        $weeks = [];
+        for ($i = 11; $i >= 0; $i--) {
+            $weeks[] = ['start' => $now - ($i + 1) * 7 * 86400, 'count' => 0];
+        }
+        $stats = ['open' => 0, 'oldestOpenAt' => null, 'done' => 0, 'auto' => 0, 'lastWeek' => 0, 'withoutStatus' => 0, 'unassigned' => 0, 'total' => 0];
+        $weekAgo = $now - 7 * 86400;
+        $inquiriesWithoutStatus = [];
+        foreach ($this->replies->findAll(null, null) as $reply) {
+            $stats['total']++;
+            if ($reply->getStatus() === Reply::STATUS_OPEN) {
+                $stats['open']++;
+                $stats['oldestOpenAt'] = $stats['oldestOpenAt'] === null ? $reply->getReceivedAt() : min($stats['oldestOpenAt'], $reply->getReceivedAt());
+            } elseif ($reply->isAutoReply()) {
+                $stats['auto']++;
+            } else {
+                $stats['done']++;
+            }
+            if ($reply->isAutoReply()) {
+                continue;
+            }
+            if ($reply->getReceivedAt() >= $weekAgo) {
+                $stats['lastWeek']++;
+            }
+            $age = intdiv(max(0, $now - $reply->getReceivedAt()), 7 * 86400);
+            if ($age < 12) {
+                $weeks[11 - $age]['count']++;
+            }
+            if ($reply->getCampaignId() === null) {
+                $stats['unassigned']++;
+                continue;
+            }
+            $inquiryId = $reply->getInquiryId();
+            if ($inquiryId !== null && !isset($inquiriesWithoutStatus[$inquiryId])) {
+                try {
+                    $inquiriesWithoutStatus[$inquiryId] = $this->inquiries->find($inquiryId)->getEffectiveOutcome() === null;
+                } catch (DoesNotExistException) {
+                    $inquiriesWithoutStatus[$inquiryId] = false;
+                }
+            }
+        }
+        // sponsors (per campaign) whose answer has no status yet
+        $stats['withoutStatus'] = count(array_filter($inquiriesWithoutStatus));
+        return $stats + ['weeks' => $weeks];
+    }
+
+    /**
      * Marks the task done (or open again), with an optional note.
      *
      * @throws ValidationException
@@ -205,7 +261,7 @@ class ReplyService {
         $reply->setReceivedAt($message->date($now));
         // vacation notices etc. are shown, but are no task
         $reply->setStatus($auto ? Reply::STATUS_DONE : Reply::STATUS_OPEN);
-        $reply->setNote($auto ? 'Automatische Antwort (z. B. Abwesenheitsnotiz)' : null);
+        $reply->setNote($auto ? Reply::AUTO_NOTE : null);
         $reply->setCreatedAt($now);
         try {
             $reply = $this->replies->insert($reply);

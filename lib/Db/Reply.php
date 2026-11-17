@@ -43,6 +43,8 @@ use OCP\AppFramework\Db\Entity;
 class Reply extends Entity implements JsonSerializable {
     public const STATUS_OPEN = 'open';
     public const STATUS_DONE = 'done';
+    /** Note of auto-replies (vacation notices), stored as done right away. */
+    public const AUTO_NOTE = 'Automatische Antwort (z. B. Abwesenheitsnotiz)';
 
     // No defaults: Entity only persists values that differ from the initial one.
     protected $messageId;
@@ -67,6 +69,10 @@ class Reply extends Entity implements JsonSerializable {
         $this->addType('receivedAt', 'integer');
         $this->addType('doneAt', 'integer');
         $this->addType('createdAt', 'integer');
+    }
+
+    public function isAutoReply(): bool {
+        return $this->status === self::STATUS_DONE && $this->doneBy === null && $this->note === self::AUTO_NOTE;
     }
 
     public function jsonSerialize(): array {

@@ -1,5 +1,5 @@
 <template>
-	<div class="dr-page">
+	<div class="dr-page dr-viz">
 		<div class="dr-header">
 			<h2>E-Mail-Antworten</h2>
 			<NcButton :disabled="fetching || !enabled" @click="fetchNow">
@@ -27,6 +27,55 @@
 		<NcNoteCard v-if="lastError" type="error">
 			Letzter Abruf fehlgeschlagen: {{ lastError }}
 		</NcNoteCard>
+
+		<div v-if="stats && stats.total" class="dr-overview">
+			<div class="dr-tiles">
+				<StatTile label="Zu bearbeiten"
+					:value="String(stats.open)"
+					class="dr-tile-link"
+					@click="showStatus('open')">
+					<template v-if="stats.oldestOpenAt">
+						älteste vom {{ formatDay(stats.oldestOpenAt) }}
+					</template>
+					<template v-else>
+						alles erledigt
+					</template>
+				</StatTile>
+				<StatTile label="Rückmeldung ohne Status"
+					:value="String(stats.withoutStatus)"
+					class="dr-tile-link"
+					@click="showStatus('nostatus')">
+					<span :class="{ 'dr-warning': stats.withoutStatus }">
+						Sponsoren, deren Antwort noch keinen Status hat
+					</span>
+				</StatTile>
+				<StatTile label="Letzte 7 Tage" :value="String(stats.lastWeek)">
+					neue Antwort-Mails
+				</StatTile>
+				<StatTile label="Erledigt"
+					:value="String(stats.done)"
+					class="dr-tile-link"
+					@click="showStatus('done')">
+					dazu {{ stats.auto }} automatische Antworten
+				</StatTile>
+				<StatTile label="Keiner Aktion zugeordnet"
+					:value="String(stats.unassigned)"
+					class="dr-tile-link"
+					@click="showStatus('unassigned')">
+					z. B. Mails von einer anderen Adresse
+				</StatTile>
+			</div>
+			<section class="dr-chart-card">
+				<h3>Antwort-Mails pro Woche</h3>
+				<ColumnChart caption="Antwort-Mails pro Woche, letzte 12 Wochen (ohne automatische Antworten)"
+					:labels="stats.weeks.map((w) => shortDay(w.start + 86400))"
+					:titles="stats.weeks.map((w) => `${formatDay(w.start + 86400)} – ${formatDay(w.start + 7 * 86400)}`)"
+					:series="[{ key: 'replies', label: 'Antwort-Mails', color: '--dr-series-1', values: stats.weeks.map((w) => w.count) }]"
+					:height="160"
+					:format="formatCount"
+					:format-tick="formatCount" />
+			</section>
+		</div>
 
 		<div class="dr-row dr-filter">
 			<NcSelect v-model="status"
@@ -151,6 +200,8 @@ import NcTextField from '@nextcloud/vue/components/NcTextField'
 import { onMounted, ref, watch } from 'vue'
 import { errorMessage, fetchReplies, getCampaign, listReplies, updateReply } from '../api.js'
 import OutcomeDialog from '../components/OutcomeDialog.vue'
+import ColumnChart from '../components/charts/ColumnChart.vue'
+import StatTile from '../components/charts/StatTile.vue'
 import ResponseFormDialog from '../components/ResponseFormDialog.vue'
 import { formatDateTime } from '../format.js'
 import { OUTCOMES } from '../outcome.js'
@@ -159,13 +210,39 @@ const STATUS = [
 	{ id: 'open', label: 'Zu bearbeiten' },
 	{ id: 'done', label: 'Erledigt' },
 	{ id: '', label: 'Alle' },
+	// filtered here, from all replies
+	{ id: 'nostatus', label: 'Rückmeldung ohne Status' },
+	{ id: 'unassigned', label: 'Keiner Aktion zugeordnet' },
 ]
+const LOCAL_FILTERS = {
+	nostatus: (r) => r.campaignId && !r.outcome && r.note !== AUTO_NOTE,
+	unassigned: (r) => !r.campaignId,
+}
+// as Reply::AUTO_NOTE
+const AUTO_NOTE = 'Automatische Antwort (z. B. Abwesenheitsnotiz)'
 // the navigation shows the number of open replies (App.vue)
 const REPLIES_CHANGED = 'donationreceipts:replies-changed'
 // where the quoted earlier mail starts (German and English mail programs)
 const QUOTE_START = /^(Am .+ schrieb .+:|On .+ wrote:|-{2,} ?(Ursprüngliche Nachricht|Original Message) ?-{2,}|Von: .+|From: .+|>.*)$/m
 
 const loading = ref(true)
+const stats = ref(null)
+
+function showStatus(id) {
+	status.value = STATUS.find((s) => s.id === id)
+}
+
+function formatDay(timestamp) {
+	return new Intl.DateTimeFormat('de-DE', { dateStyle: 'medium' }).format(new Date(timestamp * 1000))
+}
+
+function shortDay(timestamp) {
+	return new Intl.DateTimeFormat('de-DE', { day: 'numeric', month: 'numeric' }).format(new Date(timestamp * 1000))
+}
+
+function formatCount(n) {
+	return new Intl.NumberFormat('de-DE').format(n)
+}
 const fetching = ref(false)
 const replies = ref([])
 const enabled = ref(true)
@@ -184,8 +261,10 @@ function shortBody(body) {
 
 async function load() {
 	try {
-		const data = await listReplies({ status: status.value.id })
-		replies.value = data.replies
+		const local = LOCAL_FILTERS[status.value.id]
+		const data = await listReplies({ status: local ? '' : status.value.id })
+		replies.value = local ? data.replies.filter(local) : data.replies
+		stats.value = data.stats
 		enabled.value = data.enabled
 		lastRun.value = data.lastRun
 		lastError.value = data.lastError
@@ -258,6 +337,32 @@ onMounted(load)
 </script>
 
 <style scoped>
+.dr-tiles {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+	gap: calc(var(--default-grid-baseline) * 3);
+	margin: calc(var(--default-grid-baseline) * 4) 0;
+}
+
+.dr-tile-link {
+	cursor: pointer;
+}
+
+.dr-tile-link:hover {
+	border-color: var(--color-primary-element);
+}
+
+.dr-chart-card {
+	padding: calc(var(--default-grid-baseline) * 4);
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-large);
+}
+
+.dr-chart-card h3 {
+	margin: 0 0 calc(var(--default-grid-baseline) * 2);
+	font-size: 16px;
+}
+
 .dr-filter {
 	max-width: 240px;
 	margin: calc(var(--default-grid-baseline) * 4) 0;
