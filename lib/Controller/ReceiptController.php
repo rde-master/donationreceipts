@@ -37,6 +37,8 @@ class ReceiptController extends Controller {
         return new JSONResponse([
             'receipts' => array_map(fn (Receipt $r) => $r->jsonSerialize() + [
                 'donorName' => isset($donors[$r->getDonorId()]) ? $donors[$r->getDonorId()]->getDisplayName() : '',
+                // without address the receipt goes by post (send status in the overview)
+                'donorHasEmail' => isset($donors[$r->getDonorId()]) && trim((string)$donors[$r->getDonorId()]->getEmail()) !== '',
             ], $list),
             'nextNumber' => $this->receipts->nextNumber(),
             'today' => $this->receipts->today(),

@@ -4,6 +4,18 @@ Alle Änderungen der App, neueste zuerst. Versionen nach [SemVer](https://semver
 Fehlerbehebung erhöht die dritte Stelle, neue Funktionen die zweite, mit der Abnahme kommt 1.0.0.
 Jede Version hat einen Git-Tag `v<version>`.
 
+## 0.19.0 – 2026-11-17
+
+- **Spender**: Übersicht mit Kacheln (Spender mit Firmen/Privat, mit Bescheinigung und Summe,
+  gespendet im laufenden Jahr davon neu, Mehrfach-Spender, ohne E-Mail), Balken „Firmen und
+  Privatpersonen“ und „Zuwendungen nach Art“, Liste „Größte Spender“. Neue Spalten „Letzte
+  Zuwendung“ und „Bescheinigungen“ (Summe, Anzahl, Jahre), Hinweis „auch möglicher Sponsor“,
+  Filter (Firmen, Privat, mit/ohne Bescheinigung, gespendet im Jahr, Mehrfach-Spender, ohne
+  E-Mail); Klick auf Kachel oder Balken filtert.
+- **Bescheinigungen**: Übersicht für das gewählte Jahr – Anzahl (Geld/Sach), Summe mit
+  Durchschnitt, Spender mit größter Zuwendung, noch zu versenden, vorbereitete Zusagen;
+  Versand-Balken und Säulen „Zuwendungen pro Monat“ (bzw. pro Jahr bei „Alle Jahre“).
+
 ## 0.18.1 – 2026-11-17
 
 - Alle Seiten der App nutzen die **volle Breite** des Inhaltsbereichs (bisher auf 900 bzw.
