@@ -4,6 +4,12 @@ Alle Änderungen der App, neueste zuerst. Versionen nach [SemVer](https://semver
 Fehlerbehebung erhöht die dritte Stelle, neue Funktionen die zweite, mit der Abnahme kommt 1.0.0.
 Jede Version hat einen Git-Tag `v<version>`.
 
+## 0.20.1 – 2026-11-17
+
+- Behoben: Die PDF-Vorschau blieb leer („darf diese eingebettete Seite nicht öffnen“) – Nextcloud
+  verbietet bei Datei-Antworten ohne eigene Richtlinie jedes Einbetten (`frame-ancestors 'none'`).
+  Die PDFs der App erlauben jetzt das Einbetten durch die eigene Nextcloud (`frame-ancestors 'self'`).
+
 ## 0.20.0 – 2026-11-17
 
 - **Vorschau der Bescheinigung**: Die Ansicht einer Bescheinigung zeigt die PDF direkt neben den

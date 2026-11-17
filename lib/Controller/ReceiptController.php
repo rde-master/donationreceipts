@@ -14,6 +14,7 @@ use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\DataDisplayResponse;
+use OCP\AppFramework\Http\EmptyContentSecurityPolicy;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\AppFramework\Http\Response;
 use OCP\IRequest;
@@ -103,6 +104,11 @@ class ReceiptController extends Controller {
         }
         $response = new DataDisplayResponse($file->getContent(), Http::STATUS_OK, ['Content-Type' => 'application/pdf']);
         $response->addHeader('Content-Disposition', 'inline; filename="' . $file->getName() . '"');
+        // Without a policy Nextcloud sends "frame-ancestors 'none'", and the
+        // preview in the receipt view (same Nextcloud) would be blocked.
+        $csp = new EmptyContentSecurityPolicy();
+        $csp->addAllowedFrameAncestorDomain("'self'");
+        $response->setContentSecurityPolicy($csp);
         return $response;
     }
 
