@@ -4,6 +4,17 @@ Alle Änderungen der App, neueste zuerst. Versionen nach [SemVer](https://semver
 Fehlerbehebung erhöht die dritte Stelle, neue Funktionen die zweite, mit der Abnahme kommt 1.0.0.
 Jede Version hat einen Git-Tag `v<version>`.
 
+## 0.17.0 – 2026-11-17
+
+- **Einstellungen in Reitern**: Verein & Steuer (inkl. Unterschrift und Stempel) · Mail
+  Bescheinigungen · Mail Sponsoren (SMTP und IMAP) · Rückmeldeformular · Benachrichtigungen ·
+  Ablage & Nummern. Ein Punkt am Reiter zeigt, wo noch etwas fehlt. „Speichern“ steht fest unten
+  und speichert die Eingaben aller Reiter.
+- **Vorlagen in Reitern**: Anschreiben · Bestätigung Zusage · Bestätigung Absage · Erinnerung ohne
+  Antwort · Erinnerung Angaben fehlen · Regeln für Erinnerungen.
+- Der gewählte Reiter steht in der Adresse (`?reiter=…`); Links aus der Aktion, dem
+  Erinnerungs-Dialog und den Einstellungen öffnen direkt den passenden Reiter.
+
 ## 0.16.0 – 2026-11-17
 
 - **CSV-Import für mögliche Sponsoren** („CSV importieren“ in der Liste) mit **Muster-CSV zum

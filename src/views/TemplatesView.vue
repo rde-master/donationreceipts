@@ -1,16 +1,23 @@
 <template>
 	<div class="dr-page">
 		<div class="dr-header">
-			<h2>Vorlagen für Anschreiben</h2>
-			<NcButton variant="primary" @click="startNew">
+			<h2>Vorlagen</h2>
+			<NcButton v-if="tab === 'anschreiben'" variant="primary" @click="startNew">
 				<template #icon>
 					<NcIconSvgWrapper :path="mdiPlus" />
 				</template>
 				Neue Vorlage
 			</NcButton>
 		</div>
+		<TabBar v-model="tab" :tabs="TABS" label="Arten von Vorlagen" />
 		<NcLoadingIcon v-if="loading" :size="32" />
-		<template v-else>
+
+		<!-- Anschreiben: several templates to choose from when sending -->
+		<div v-else-if="tab === 'anschreiben'" role="tabpanel">
+			<p class="dr-muted">
+				Texte für das Anschreiben an mögliche Sponsoren; beim Versand wählst du eine davon und kannst
+				sie noch anpassen.
+			</p>
 			<NcEmptyContent v-if="!templates.length && !form"
 				name="Noch keine Vorlagen"
 				description="Lege eine Vorlage an; sie wird mit einem Mustertext vorbefüllt.">
@@ -56,68 +63,72 @@
 					</NcButton>
 				</div>
 			</form>
+		</div>
 
-			<section v-if="mailValues" class="dr-sponsor-mails">
-				<h2>Automatische Mails an Sponsoren</h2>
-				<p class="dr-muted">
-					Gehen über den SMTP-Zugang der Anschreiben, jeweils mit dem persönlichen Rückmelde-Link.
-				</p>
-				<div class="dr-segmented dr-mail-kinds" role="group" aria-label="Mail">
-					<NcButton v-for="kind in MAIL_KINDS"
-						:key="kind.key"
-						:pressed="mailKind.key === kind.key"
-						@update:pressed="mailKind = kind">
-						{{ kind.label }}
-					</NcButton>
-				</div>
-				<form class="dr-form dr-template-form" @submit.prevent="saveMails">
-					<p class="dr-muted">
-						{{ mailKind.hint }}
-					</p>
-					<NcTextField v-model="mailValues[`${mailKind.key}_subject`]" label="Betreff" />
-					<HtmlEditor :key="mailKind.key"
-						v-model="mailValues[`${mailKind.key}_body`]"
-						label="Text"
-						:placeholders="mailPlaceholders[mailKind.placeholders]" />
-					<p class="dr-muted">
-						Platzhalter:
-						<span v-for="(label, key) in mailPlaceholders[mailKind.placeholders]" :key="key" class="dr-placeholder">
-							<code>{{ '{' + key + '}' }}</code> {{ label }}
-						</span>
-					</p>
+		<!-- one automatic mail -->
+		<form v-else-if="mailKind && mailValues"
+			class="dr-form dr-template-form"
+			role="tabpanel"
+			@submit.prevent="saveMails">
+			<p class="dr-muted">
+				{{ mailKind.hint }} Geht über den SMTP-Zugang der Anschreiben.
+			</p>
+			<NcTextField v-model="mailValues[`${mailKind.key}_subject`]" label="Betreff" />
+			<HtmlEditor :key="mailKind.key"
+				v-model="mailValues[`${mailKind.key}_body`]"
+				label="Text"
+				:placeholders="mailPlaceholders[mailKind.placeholders]" />
+			<p class="dr-muted">
+				Platzhalter:
+				<span v-for="(label, key) in mailPlaceholders[mailKind.placeholders]" :key="key" class="dr-placeholder">
+					<code>{{ '{' + key + '}' }}</code> {{ label }}
+				</span>
+			</p>
+			<div class="dr-actions">
+				<NcButton type="submit" variant="primary" :disabled="savingMails">
+					Speichern
+				</NcButton>
+			</div>
+		</form>
 
-					<h3>Erinnerungen</h3>
-					<div class="dr-row">
-						<NcTextField v-model="reminderDays"
-							type="number"
-							min="1"
-							max="365"
-							label="Fällig nach Tagen"
-							helper-text="seit dem Anschreiben bzw. der letzten Erinnerung" />
-						<NcTextField v-model="reminderMax"
-							type="number"
-							min="1"
-							max="10"
-							label="Höchstens Erinnerungen"
-							helper-text="je Sponsor und Aktion" />
-					</div>
-					<NcCheckboxRadioSwitch v-model="mailValues.reminder_auto" type="switch">
-						Fällige Erinnerungen täglich automatisch senden
-					</NcCheckboxRadioSwitch>
-					<p class="dr-muted">
-						Erinnert werden nur Sponsoren ohne Antwort und solche, die zugesagt haben, aber noch Angaben
-						schuldig sind – nie nach einer Absage, bei „nicht mehr anschreiben“, bei einer unbearbeiteten
-						Antwort-Mail oder in geschlossenen Aktionen. Ohne Automatik siehst du die fälligen in der Aktion
-						und sendest sie dort.
-					</p>
-					<div class="dr-actions">
-						<NcButton type="submit" variant="primary" :disabled="savingMails">
-							Mails und Erinnerungen speichern
-						</NcButton>
-					</div>
-				</form>
-			</section>
-		</template>
+		<!-- reminder rules -->
+		<form v-else-if="tab === 'erinnerungen' && mailValues"
+			class="dr-form dr-template-form"
+			role="tabpanel"
+			@submit.prevent="saveMails">
+			<p class="dr-muted">
+				Wann Sponsoren erinnert werden. Die Texte stehen in den Reitern „Erinnerung ohne Antwort“ und
+				„Erinnerung Angaben fehlen“.
+			</p>
+			<div class="dr-row">
+				<NcTextField v-model="reminderDays"
+					type="number"
+					min="1"
+					max="365"
+					label="Fällig nach Tagen"
+					helper-text="seit dem Anschreiben bzw. der letzten Erinnerung" />
+				<NcTextField v-model="reminderMax"
+					type="number"
+					min="1"
+					max="10"
+					label="Höchstens Erinnerungen"
+					helper-text="je Sponsor und Aktion" />
+			</div>
+			<NcCheckboxRadioSwitch v-model="mailValues.reminder_auto" type="switch">
+				Fällige Erinnerungen täglich automatisch senden
+			</NcCheckboxRadioSwitch>
+			<p class="dr-muted">
+				Erinnert werden nur Sponsoren ohne Antwort und solche, die zugesagt haben, aber noch Angaben
+				schuldig sind – nie nach einer Absage, bei „nicht mehr anschreiben“, bei einer unbearbeiteten
+				Antwort-Mail oder in geschlossenen Aktionen. Ohne Automatik siehst du die fälligen in der Aktion
+				und sendest sie dort.
+			</p>
+			<div class="dr-actions">
+				<NcButton type="submit" variant="primary" :disabled="savingMails">
+					Speichern
+				</NcButton>
+			</div>
+		</form>
 	</div>
 </template>
 
@@ -133,6 +144,8 @@ import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
 import { computed, defineAsyncComponent, onMounted, ref } from 'vue'
 import { createLetterTemplate, deleteLetterTemplate, errorMessage, getSettings, listLetterTemplates, updateLetterTemplate, updateSettings } from '../api.js'
+import TabBar from '../components/TabBar.vue'
+import { useTab } from '../useTab.js'
 
 // automatic mails to sponsors: setting keys <key>_subject / <key>_body
 const MAIL_KINDS = [
@@ -161,6 +174,11 @@ const MAIL_KINDS = [
 		placeholders: 'sponsor',
 	},
 ]
+const TABS = [
+	{ id: 'anschreiben', label: 'Anschreiben' },
+	...MAIL_KINDS.map((k) => ({ id: k.key, label: k.label })),
+	{ id: 'erinnerungen', label: 'Regeln für Erinnerungen' },
+]
 const MAIL_KEYS = [...MAIL_KINDS.flatMap((k) => [`${k.key}_subject`, `${k.key}_body`]), 'reminder_days', 'reminder_max', 'reminder_auto']
 
 // Tiptap is large: only loaded where a mail text is edited
@@ -174,7 +192,8 @@ const defaults = ref({ subject: '', body: '' })
 const form = ref(null)
 const mailValues = ref(null)
 const mailPlaceholders = ref({})
-const mailKind = ref(MAIL_KINDS[0])
+const tab = useTab(TABS.map((t) => t.id))
+const mailKind = computed(() => MAIL_KINDS.find((k) => k.key === tab.value) ?? null)
 const savingMails = ref(false)
 
 // NcTextField type=number yields a string
@@ -280,19 +299,6 @@ onMounted(async () => {
 	display: flex;
 	flex-direction: column;
 	gap: calc(var(--default-grid-baseline) * 2);
-}
-
-.dr-sponsor-mails {
-	margin-top: calc(var(--default-grid-baseline) * 10);
-	padding-top: calc(var(--default-grid-baseline) * 4);
-	border-top: 1px solid var(--color-border);
-}
-
-.dr-mail-kinds {
-	display: flex;
-	flex-wrap: wrap;
-	gap: var(--default-grid-baseline);
-	margin: calc(var(--default-grid-baseline) * 3) 0;
 }
 
 .dr-placeholder {

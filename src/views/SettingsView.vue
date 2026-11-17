@@ -7,345 +7,360 @@
 				Für Bescheinigungen fehlen noch: {{ missing.join(', ') }}
 			</NcNoteCard>
 
-			<section>
-				<h3>Verein (Zuwendungsempfänger)</h3>
-				<NcTextField v-model="values.org_name" label="Name" />
-				<NcTextField v-model="values.org_function" label="Funktionszeile (optional)" />
-				<NcTextField v-model="values.org_street" label="Straße und Hausnummer" />
-				<div class="dr-row">
-					<NcTextField v-model="values.org_zip" label="PLZ" class="dr-zip" />
-					<NcTextField v-model="values.org_city" label="Ort" />
-				</div>
-			</section>
+			<TabBar v-model="tab" :tabs="tabs" label="Bereiche der Einstellungen" />
 
-			<section>
-				<h3>Steuerbegünstigung</h3>
-				<NcCheckboxRadioSwitch v-model="values.tax_mode"
-					type="radio"
-					value="exemption"
-					name="tax_mode">
-					Freistellungsbescheid bzw. Anlage zum Körperschaftsteuerbescheid
-				</NcCheckboxRadioSwitch>
-				<NcCheckboxRadioSwitch v-model="values.tax_mode"
-					type="radio"
-					value="statute"
-					name="tax_mode">
-					Feststellung der satzungsmäßigen Voraussetzungen nach § 60a AO
-				</NcCheckboxRadioSwitch>
-				<div class="dr-row">
-					<NcTextField v-model="values.tax_office" label="Finanzamt" />
-					<NcTextField v-model="values.tax_number" label="Steuernummer" />
-				</div>
-				<div v-if="values.tax_mode === 'exemption'" class="dr-row">
-					<NcTextField v-model="values.exemption_date" type="date" label="Datum des Bescheids" />
-					<NcTextField v-model="values.exemption_period"
-						label="Letzter Veranlagungszeitraum"
-						placeholder="z. B. 2022 bis 2024" />
-				</div>
-				<NcTextField v-else
-					v-model="values.statute_date"
-					type="date"
-					label="Datum des Feststellungsbescheids" />
-				<NcNoteCard v-if="bescheidAgeWarning" type="warning">
-					{{ bescheidAgeWarning }}
-				</NcNoteCard>
-			</section>
+			<div v-show="tab === 'verein'" role="tabpanel">
+				<section>
+					<h3>Verein (Zuwendungsempfänger)</h3>
+					<NcTextField v-model="values.org_name" label="Name" />
+					<NcTextField v-model="values.org_function" label="Funktionszeile (optional)" />
+					<NcTextField v-model="values.org_street" label="Straße und Hausnummer" />
+					<div class="dr-row">
+						<NcTextField v-model="values.org_zip" label="PLZ" class="dr-zip" />
+						<NcTextField v-model="values.org_city" label="Ort" />
+					</div>
+				</section>
 
-			<section>
-				<h3>Begünstigte Zwecke</h3>
-				<NcTextArea v-model="values.purposes"
-					label="Zwecke, wie sie im Bescheid stehen"
-					resize="vertical"
-					rows="3" />
-				<NcCheckboxRadioSwitch v-model="values.membership_fees_not_deductible">
-					Mitgliedsbeiträge sind steuerlich nicht abziehbar (z. B. Sportverein) –
-					auf Geldzuwendungen wird „kein Mitgliedsbeitrag“ angekreuzt
-				</NcCheckboxRadioSwitch>
-			</section>
-
-			<section>
-				<h3>Unterzeichnung</h3>
-				<NcTextField v-model="values.sign_place" label="Ort" />
-				<div class="dr-row">
-					<NcTextField v-model="values.signer_name" label="Name der unterzeichnenden Person" />
-					<NcTextField v-model="values.signer_function" label="Funktion" placeholder="z. B. 1. Vorsitzende" />
-				</div>
-			</section>
-
-			<section>
-				<h3>E-Mail-Versand (SMTP)</h3>
-				<p class="dr-muted">
-					Eigener Zugang, unabhängig vom Mailserver der Nextcloud. Zugangsdaten werden nur über
-					eine verschlüsselte Verbindung gesendet.
-				</p>
-				<div class="dr-row">
-					<NcTextField v-model="values.smtp_host" label="Server" placeholder="smtp.example.org" />
-					<NcTextField v-model="smtpPort"
-						type="number"
-						label="Port"
-						class="dr-zip" />
-				</div>
-				<div class="dr-row dr-radios">
-					<NcCheckboxRadioSwitch v-model="values.smtp_security"
+				<section>
+					<h3>Steuerbegünstigung</h3>
+					<NcCheckboxRadioSwitch v-model="values.tax_mode"
 						type="radio"
-						value="starttls"
-						name="smtp_security"
-						@update:model-value="values.smtp_port = 587">
-						STARTTLS (Port 587)
+						value="exemption"
+						name="tax_mode">
+						Freistellungsbescheid bzw. Anlage zum Körperschaftsteuerbescheid
 					</NcCheckboxRadioSwitch>
-					<NcCheckboxRadioSwitch v-model="values.smtp_security"
+					<NcCheckboxRadioSwitch v-model="values.tax_mode"
 						type="radio"
-						value="ssl"
-						name="smtp_security"
-						@update:model-value="values.smtp_port = 465">
-						SSL/TLS (Port 465)
+						value="statute"
+						name="tax_mode">
+						Feststellung der satzungsmäßigen Voraussetzungen nach § 60a AO
 					</NcCheckboxRadioSwitch>
-				</div>
-				<div class="dr-row">
-					<NcTextField v-model="values.smtp_user" label="Benutzer" autocomplete="off" />
-					<NcPasswordField v-model="smtpPassword"
-						label="Passwort"
-						autocomplete="new-password"
-						:placeholder="smtpPasswordSet ? 'gespeichert – leer lassen zum Behalten' : ''" />
-				</div>
-				<div class="dr-row">
-					<NcTextField v-model="values.smtp_from_name" label="Absendername" />
-					<NcTextField v-model="values.smtp_from_email" type="email" label="Absenderadresse" />
-				</div>
-				<div class="dr-row">
-					<NcTextField v-model="testAddress" type="email" label="Testmail an" />
-					<NcButton :disabled="testing || !testAddress" @click="sendTest('')">
-						Speichern und Testmail senden
-					</NcButton>
-				</div>
-			</section>
+					<div class="dr-row">
+						<NcTextField v-model="values.tax_office" label="Finanzamt" />
+						<NcTextField v-model="values.tax_number" label="Steuernummer" />
+					</div>
+					<div v-if="values.tax_mode === 'exemption'" class="dr-row">
+						<NcTextField v-model="values.exemption_date" type="date" label="Datum des Bescheids" />
+						<NcTextField v-model="values.exemption_period"
+							label="Letzter Veranlagungszeitraum"
+							placeholder="z. B. 2022 bis 2024" />
+					</div>
+					<NcTextField v-else
+						v-model="values.statute_date"
+						type="date"
+						label="Datum des Feststellungsbescheids" />
+					<NcNoteCard v-if="bescheidAgeWarning" type="warning">
+						{{ bescheidAgeWarning }}
+					</NcNoteCard>
+				</section>
 
-			<section>
-				<h3>E-Mail-Vorlage</h3>
-				<p class="dr-muted">
-					Versendet wird HTML mit einer automatisch erzeugten Textfassung für Mailprogramme ohne HTML.
-					Eingefügte Bilder werden in die Mail eingebettet.
-				</p>
-				<NcTextField v-model="values.mail_subject" label="Betreff" />
-				<HtmlEditor v-model="values.mail_body" label="Text" :placeholders="placeholders" />
-				<p class="dr-muted">
-					Platzhalter:
-					<span v-for="(label, key) in placeholders" :key="key" class="dr-placeholder">
-						<code>{{ '{' + key + '}' }}</code> {{ label }}
-					</span>
-				</p>
-			</section>
-
-			<section>
-				<h3>Sponsoren-Anschreiben: E-Mail-Versand (SMTP)</h3>
-				<p class="dr-muted">
-					Zweiter Zugang für Anschreiben an Sponsoren und die Bestätigung nach einer Rückmeldung –
-					z. B. ein anderes Postfach als für die Bescheinigungen.
-				</p>
-				<NcNoteCard v-if="sponsorMailMissing.length" type="info">
-					Noch nicht eingerichtet: {{ sponsorMailMissing.join(', ') }}
-				</NcNoteCard>
-				<div class="dr-row">
-					<NcTextField v-model="values.sponsor_smtp_host" label="Server" placeholder="smtp.example.org" />
-					<NcTextField v-model="sponsorSmtpPort"
-						type="number"
-						label="Port"
-						class="dr-zip" />
-				</div>
-				<div class="dr-row dr-radios">
-					<NcCheckboxRadioSwitch v-model="values.sponsor_smtp_security"
-						type="radio"
-						value="starttls"
-						name="sponsor_smtp_security"
-						@update:model-value="values.sponsor_smtp_port = 587">
-						STARTTLS (Port 587)
+				<section>
+					<h3>Begünstigte Zwecke</h3>
+					<NcTextArea v-model="values.purposes"
+						label="Zwecke, wie sie im Bescheid stehen"
+						resize="vertical"
+						rows="3" />
+					<NcCheckboxRadioSwitch v-model="values.membership_fees_not_deductible">
+						Mitgliedsbeiträge sind steuerlich nicht abziehbar (z. B. Sportverein) –
+						auf Geldzuwendungen wird „kein Mitgliedsbeitrag“ angekreuzt
 					</NcCheckboxRadioSwitch>
-					<NcCheckboxRadioSwitch v-model="values.sponsor_smtp_security"
-						type="radio"
-						value="ssl"
-						name="sponsor_smtp_security"
-						@update:model-value="values.sponsor_smtp_port = 465">
-						SSL/TLS (Port 465)
+				</section>
+
+				<section>
+					<h3>Unterzeichnung</h3>
+					<NcTextField v-model="values.sign_place" label="Ort" />
+					<div class="dr-row">
+						<NcTextField v-model="values.signer_name" label="Name der unterzeichnenden Person" />
+						<NcTextField v-model="values.signer_function" label="Funktion" placeholder="z. B. 1. Vorsitzende" />
+					</div>
+				</section>
+
+				<section>
+					<h3>Unterschrift und Stempel</h3>
+					<p class="dr-muted">
+						PNG mit transparentem Hintergrund. Die Bilder liegen im geschützten Datenbereich der App
+						und werden sofort gespeichert.
+					</p>
+					<ImageSetting kind="signature"
+						label="Unterschrift"
+						:present="images.signature"
+						@changed="reload" />
+					<ImageSetting kind="stamp"
+						label="Stempel"
+						:present="images.stamp"
+						@changed="reload" />
+				</section>
+			</div>
+
+			<div v-show="tab === 'bescheinigungsmail'" role="tabpanel">
+				<section>
+					<h3>E-Mail-Versand (SMTP)</h3>
+					<p class="dr-muted">
+						Eigener Zugang, unabhängig vom Mailserver der Nextcloud. Zugangsdaten werden nur über
+						eine verschlüsselte Verbindung gesendet.
+					</p>
+					<div class="dr-row">
+						<NcTextField v-model="values.smtp_host" label="Server" placeholder="smtp.example.org" />
+						<NcTextField v-model="smtpPort"
+							type="number"
+							label="Port"
+							class="dr-zip" />
+					</div>
+					<div class="dr-row dr-radios">
+						<NcCheckboxRadioSwitch v-model="values.smtp_security"
+							type="radio"
+							value="starttls"
+							name="smtp_security"
+							@update:model-value="values.smtp_port = 587">
+							STARTTLS (Port 587)
+						</NcCheckboxRadioSwitch>
+						<NcCheckboxRadioSwitch v-model="values.smtp_security"
+							type="radio"
+							value="ssl"
+							name="smtp_security"
+							@update:model-value="values.smtp_port = 465">
+							SSL/TLS (Port 465)
+						</NcCheckboxRadioSwitch>
+					</div>
+					<div class="dr-row">
+						<NcTextField v-model="values.smtp_user" label="Benutzer" autocomplete="off" />
+						<NcPasswordField v-model="smtpPassword"
+							label="Passwort"
+							autocomplete="new-password"
+							:placeholder="smtpPasswordSet ? 'gespeichert – leer lassen zum Behalten' : ''" />
+					</div>
+					<div class="dr-row">
+						<NcTextField v-model="values.smtp_from_name" label="Absendername" />
+						<NcTextField v-model="values.smtp_from_email" type="email" label="Absenderadresse" />
+					</div>
+					<div class="dr-row">
+						<NcTextField v-model="testAddress" type="email" label="Testmail an" />
+						<NcButton :disabled="testing || !testAddress" @click="sendTest('')">
+							Speichern und Testmail senden
+						</NcButton>
+					</div>
+				</section>
+
+				<section>
+					<h3>E-Mail-Vorlage</h3>
+					<p class="dr-muted">
+						Versendet wird HTML mit einer automatisch erzeugten Textfassung für Mailprogramme ohne HTML.
+						Eingefügte Bilder werden in die Mail eingebettet.
+					</p>
+					<NcTextField v-model="values.mail_subject" label="Betreff" />
+					<HtmlEditor v-model="values.mail_body" label="Text" :placeholders="placeholders" />
+					<p class="dr-muted">
+						Platzhalter:
+						<span v-for="(label, key) in placeholders" :key="key" class="dr-placeholder">
+							<code>{{ '{' + key + '}' }}</code> {{ label }}
+						</span>
+					</p>
+				</section>
+			</div>
+
+			<div v-show="tab === 'sponsorenmail'" role="tabpanel">
+				<section>
+					<h3>Sponsoren-Anschreiben: E-Mail-Versand (SMTP)</h3>
+					<p class="dr-muted">
+						Zweiter Zugang für Anschreiben an Sponsoren und die Bestätigung nach einer Rückmeldung –
+						z. B. ein anderes Postfach als für die Bescheinigungen.
+					</p>
+					<NcNoteCard v-if="sponsorMailMissing.length" type="info">
+						Noch nicht eingerichtet: {{ sponsorMailMissing.join(', ') }}
+					</NcNoteCard>
+					<div class="dr-row">
+						<NcTextField v-model="values.sponsor_smtp_host" label="Server" placeholder="smtp.example.org" />
+						<NcTextField v-model="sponsorSmtpPort"
+							type="number"
+							label="Port"
+							class="dr-zip" />
+					</div>
+					<div class="dr-row dr-radios">
+						<NcCheckboxRadioSwitch v-model="values.sponsor_smtp_security"
+							type="radio"
+							value="starttls"
+							name="sponsor_smtp_security"
+							@update:model-value="values.sponsor_smtp_port = 587">
+							STARTTLS (Port 587)
+						</NcCheckboxRadioSwitch>
+						<NcCheckboxRadioSwitch v-model="values.sponsor_smtp_security"
+							type="radio"
+							value="ssl"
+							name="sponsor_smtp_security"
+							@update:model-value="values.sponsor_smtp_port = 465">
+							SSL/TLS (Port 465)
+						</NcCheckboxRadioSwitch>
+					</div>
+					<div class="dr-row">
+						<NcTextField v-model="values.sponsor_smtp_user" label="Benutzer" autocomplete="off" />
+						<NcPasswordField v-model="sponsorSmtpPassword"
+							label="Passwort"
+							autocomplete="new-password"
+							:placeholder="sponsorSmtpPasswordSet ? 'gespeichert – leer lassen zum Behalten' : ''" />
+					</div>
+					<div class="dr-row">
+						<NcTextField v-model="values.sponsor_smtp_from_name" label="Absendername" />
+						<NcTextField v-model="values.sponsor_smtp_from_email" type="email" label="Absenderadresse" />
+					</div>
+					<div class="dr-row">
+						<NcTextField v-model="sponsorTestAddress" type="email" label="Testmail an" />
+						<NcButton :disabled="testing || !sponsorTestAddress" @click="sendTest('sponsor_')">
+							Speichern und Testmail senden
+						</NcButton>
+					</div>
+				</section>
+
+				<section>
+					<h3>Sponsoren-Anschreiben: Antworten abrufen (IMAP)</h3>
+					<p class="dr-muted">
+						Die App liest alle 10 Minuten neue Mails im Postfach der Anschreiben – nur lesend, Mails
+						bleiben unverändert und ungelesen. Übernommen werden Antworten auf Anschreiben und Mails von
+						Adressen möglicher Sponsoren; sie erscheinen unter „Antworten“ als Aufgabe und beim Sponsor in
+						der Aktion. Beim ersten Abruf werden die Mails der letzten 30 Tage berücksichtigt.
+					</p>
+					<NcCheckboxRadioSwitch v-model="values.sponsor_imap_enabled" type="switch">
+						Antworten automatisch abrufen
 					</NcCheckboxRadioSwitch>
-				</div>
-				<div class="dr-row">
-					<NcTextField v-model="values.sponsor_smtp_user" label="Benutzer" autocomplete="off" />
-					<NcPasswordField v-model="sponsorSmtpPassword"
-						label="Passwort"
-						autocomplete="new-password"
-						:placeholder="sponsorSmtpPasswordSet ? 'gespeichert – leer lassen zum Behalten' : ''" />
-				</div>
-				<div class="dr-row">
-					<NcTextField v-model="values.sponsor_smtp_from_name" label="Absendername" />
-					<NcTextField v-model="values.sponsor_smtp_from_email" type="email" label="Absenderadresse" />
-				</div>
-				<div class="dr-row">
-					<NcTextField v-model="sponsorTestAddress" type="email" label="Testmail an" />
-					<NcButton :disabled="testing || !sponsorTestAddress" @click="sendTest('sponsor_')">
-						Speichern und Testmail senden
-					</NcButton>
-				</div>
-			</section>
+					<div class="dr-row">
+						<NcTextField v-model="values.sponsor_imap_host" label="IMAP-Server" placeholder="imap.example.org" />
+						<NcTextField v-model="imapPort"
+							type="number"
+							label="Port"
+							class="dr-zip" />
+					</div>
+					<div class="dr-row dr-radios">
+						<NcCheckboxRadioSwitch v-model="values.sponsor_imap_security"
+							type="radio"
+							value="ssl"
+							name="sponsor_imap_security"
+							@update:model-value="values.sponsor_imap_port = 993">
+							SSL/TLS (Port 993)
+						</NcCheckboxRadioSwitch>
+						<NcCheckboxRadioSwitch v-model="values.sponsor_imap_security"
+							type="radio"
+							value="starttls"
+							name="sponsor_imap_security"
+							@update:model-value="values.sponsor_imap_port = 143">
+							STARTTLS (Port 143)
+						</NcCheckboxRadioSwitch>
+					</div>
+					<div class="dr-row">
+						<NcTextField v-model="values.sponsor_imap_user"
+							label="Benutzer"
+							autocomplete="off"
+							placeholder="leer = wie SMTP" />
+						<NcPasswordField v-model="imapPassword"
+							label="Passwort"
+							autocomplete="new-password"
+							:placeholder="imapPasswordSet ? 'gespeichert – leer lassen zum Behalten' : 'leer = wie SMTP'" />
+					</div>
+					<NcTextField v-model="values.sponsor_imap_folder" label="Ordner" placeholder="INBOX" />
+					<div class="dr-row">
+						<NcButton :disabled="testing" @click="testImapConnection">
+							Speichern und Verbindung testen
+						</NcButton>
+					</div>
+				</section>
+			</div>
 
-			<section>
-				<h3>Sponsoren-Anschreiben: Antworten abrufen (IMAP)</h3>
-				<p class="dr-muted">
-					Die App liest alle 10 Minuten neue Mails im Postfach der Anschreiben – nur lesend, Mails
-					bleiben unverändert und ungelesen. Übernommen werden Antworten auf Anschreiben und Mails von
-					Adressen möglicher Sponsoren; sie erscheinen unter „Antworten“ als Aufgabe und beim Sponsor in
-					der Aktion. Beim ersten Abruf werden die Mails der letzten 30 Tage berücksichtigt.
-				</p>
-				<NcCheckboxRadioSwitch v-model="values.sponsor_imap_enabled" type="switch">
-					Antworten automatisch abrufen
-				</NcCheckboxRadioSwitch>
-				<div class="dr-row">
-					<NcTextField v-model="values.sponsor_imap_host" label="IMAP-Server" placeholder="imap.example.org" />
-					<NcTextField v-model="imapPort"
-						type="number"
-						label="Port"
-						class="dr-zip" />
-				</div>
-				<div class="dr-row dr-radios">
-					<NcCheckboxRadioSwitch v-model="values.sponsor_imap_security"
-						type="radio"
-						value="ssl"
-						name="sponsor_imap_security"
-						@update:model-value="values.sponsor_imap_port = 993">
-						SSL/TLS (Port 993)
+			<div v-show="tab === 'rueckmeldung'" role="tabpanel">
+				<section>
+					<h3>Rückmeldeformular</h3>
+					<NcTextArea v-model="values.response_intro"
+						label="Text über dem Formular"
+						resize="vertical"
+						rows="6" />
+					<p class="dr-muted">
+						Platzhalter:
+						<span v-for="(label, key) in sponsorPlaceholders" :key="key" class="dr-placeholder">
+							<code>{{ '{' + key + '}' }}</code> {{ label }}
+						</span>
+					</p>
+
+					<h4>Antwortmöglichkeiten im Formular</h4>
+					<p class="dr-muted">
+						Ändert nur die Texte, die Sponsoren im Formular sehen. Dahinter bleibt der Status gleich
+						(„Zusage“, „Diesmal nicht“, „Bitte nicht mehr anschreiben“) – in der App, in Filtern und
+						Auswertungen ändert sich nichts. Leer = Standardtext; Platzhalter wie oben.
+					</p>
+					<NcTextField v-model="values.answer_yes_label"
+						label="Zusage"
+						:placeholder="answerDefaults.answer_yes_label" />
+					<NcTextField v-model="values.answer_declined_label"
+						label="Absage für diese Aktion (Status „Diesmal nicht“)"
+						:placeholder="answerDefaults.answer_declined_label" />
+					<NcTextArea v-model="values.answer_declined_hint"
+						label="Hinweis bei dieser Absage"
+						:placeholder="answerDefaults.answer_declined_hint"
+						resize="vertical"
+						rows="2" />
+					<NcTextField v-model="values.answer_no_contact_label"
+						label="Keine Anfragen mehr (Status „Bitte nicht mehr anschreiben“)"
+						:placeholder="answerDefaults.answer_no_contact_label" />
+					<NcTextArea v-model="values.answer_no_contact_hint"
+						label="Hinweis bei „keine Anfragen mehr“"
+						:placeholder="answerDefaults.answer_no_contact_hint"
+						resize="vertical"
+						rows="2" />
+				</section>
+
+				<section>
+					<h3>Mails an Sponsoren</h3>
+					<p class="dr-muted">
+						Bestätigung einer Zusage oder Absage und die Erinnerungen stehen unter
+						<RouterLink :to="{ name: 'templates', query: { reiter: 'confirm' } }">
+							Vorlagen
+						</RouterLink>.
+					</p>
+				</section>
+			</div>
+
+			<div v-show="tab === 'benachrichtigungen'" role="tabpanel">
+				<section>
+					<h3>Benachrichtigungen</h3>
+					<p class="dr-muted">
+						Bei jeder Rückmeldung über das Formular und jeder neuen Antwort-Mail bekommen alle
+						Mitglieder der berechtigten Gruppe eine Nextcloud-Benachrichtigung.
+					</p>
+					<NcCheckboxRadioSwitch v-model="values.notify_group_mail" type="switch">
+						Zusätzlich eine E-Mail an die Gruppenmitglieder (an ihre Adresse in Nextcloud)
 					</NcCheckboxRadioSwitch>
-					<NcCheckboxRadioSwitch v-model="values.sponsor_imap_security"
-						type="radio"
-						value="starttls"
-						name="sponsor_imap_security"
-						@update:model-value="values.sponsor_imap_port = 143">
-						STARTTLS (Port 143)
-					</NcCheckboxRadioSwitch>
-				</div>
-				<div class="dr-row">
-					<NcTextField v-model="values.sponsor_imap_user"
-						label="Benutzer"
-						autocomplete="off"
-						placeholder="leer = wie SMTP" />
-					<NcPasswordField v-model="imapPassword"
-						label="Passwort"
-						autocomplete="new-password"
-						:placeholder="imapPasswordSet ? 'gespeichert – leer lassen zum Behalten' : 'leer = wie SMTP'" />
-				</div>
-				<NcTextField v-model="values.sponsor_imap_folder" label="Ordner" placeholder="INBOX" />
-				<div class="dr-row">
-					<NcButton :disabled="testing" @click="testImapConnection">
-						Speichern und Verbindung testen
-					</NcButton>
-				</div>
-			</section>
+				</section>
+			</div>
 
-			<section>
-				<h3>Benachrichtigungen</h3>
-				<p class="dr-muted">
-					Bei jeder Rückmeldung über das Formular und jeder neuen Antwort-Mail bekommen alle
-					Mitglieder der berechtigten Gruppe eine Nextcloud-Benachrichtigung.
-				</p>
-				<NcCheckboxRadioSwitch v-model="values.notify_group_mail" type="switch">
-					Zusätzlich eine E-Mail an die Gruppenmitglieder (an ihre Adresse in Nextcloud)
-				</NcCheckboxRadioSwitch>
-			</section>
+			<div v-show="tab === 'ablage'" role="tabpanel">
+				<section>
+					<h3>Ablage</h3>
+					<p class="dr-muted">
+						In beiden Hauptordnern legt die App je Spender einen Unterordner an. Alle Berechtigten
+						brauchen dort Schreibrecht, z. B. über einen Team-Ordner. Im Logo-Ordner landen die
+						Logos aus Rückmeldungen je Aktion; ohne Logo-Ordner bietet das Formular keinen Upload an.
+					</p>
+					<div v-for="(label, variant) in FOLDER_LABELS" :key="variant" class="dr-folder">
+						<div>
+							<strong>{{ label }}</strong>
+							<div :class="folders[variant] ? '' : 'dr-muted'">
+								{{ folders[variant] || 'nicht gewählt' }}
+							</div>
+						</div>
+						<NcButton @click="pickFolder(variant, label)">
+							Ordner wählen
+						</NcButton>
+					</div>
+				</section>
 
-			<section>
-				<h3>Rückmeldeformular</h3>
-				<NcTextArea v-model="values.response_intro"
-					label="Text über dem Formular"
-					resize="vertical"
-					rows="6" />
-				<p class="dr-muted">
-					Platzhalter:
-					<span v-for="(label, key) in sponsorPlaceholders" :key="key" class="dr-placeholder">
-						<code>{{ '{' + key + '}' }}</code> {{ label }}
-					</span>
-				</p>
+				<section>
+					<h3>Nummernkreis</h3>
+					<p>Format <code>JJJJ-NNNN</code>, jedes Jahr ab 0001. Nächste Nummer: <strong>{{ nextNumber }}</strong></p>
+				</section>
+			</div>
 
-				<h4>Antwortmöglichkeiten im Formular</h4>
-				<p class="dr-muted">
-					Ändert nur die Texte, die Sponsoren im Formular sehen. Dahinter bleibt der Status gleich
-					(„Zusage“, „Diesmal nicht“, „Bitte nicht mehr anschreiben“) – in der App, in Filtern und
-					Auswertungen ändert sich nichts. Leer = Standardtext; Platzhalter wie oben.
-				</p>
-				<NcTextField v-model="values.answer_yes_label"
-					label="Zusage"
-					:placeholder="answerDefaults.answer_yes_label" />
-				<NcTextField v-model="values.answer_declined_label"
-					label="Absage für diese Aktion (Status „Diesmal nicht“)"
-					:placeholder="answerDefaults.answer_declined_label" />
-				<NcTextArea v-model="values.answer_declined_hint"
-					label="Hinweis bei dieser Absage"
-					:placeholder="answerDefaults.answer_declined_hint"
-					resize="vertical"
-					rows="2" />
-				<NcTextField v-model="values.answer_no_contact_label"
-					label="Keine Anfragen mehr (Status „Bitte nicht mehr anschreiben“)"
-					:placeholder="answerDefaults.answer_no_contact_label" />
-				<NcTextArea v-model="values.answer_no_contact_hint"
-					label="Hinweis bei „keine Anfragen mehr“"
-					:placeholder="answerDefaults.answer_no_contact_hint"
-					resize="vertical"
-					rows="2" />
-			</section>
-
-			<section>
-				<h3>Mails an Sponsoren</h3>
-				<p class="dr-muted">
-					Bestätigung einer Zusage oder Absage und die Erinnerungen stehen unter
-					<RouterLink :to="{ name: 'templates' }">
-						Vorlagen
-					</RouterLink>.
-				</p>
-			</section>
-
-			<div class="dr-actions">
+			<div v-show="tab !== 'ablage'" class="dr-actions dr-save">
 				<NcButton type="submit" variant="primary" :disabled="saving">
 					Speichern
 				</NcButton>
+				<span class="dr-muted">Speichert die Eingaben aller Reiter.</span>
 			</div>
-
-			<section>
-				<h3>Unterschrift und Stempel</h3>
-				<p class="dr-muted">
-					PNG mit transparentem Hintergrund. Die Bilder liegen im geschützten Datenbereich der App
-					und werden sofort gespeichert.
-				</p>
-				<ImageSetting kind="signature"
-					label="Unterschrift"
-					:present="images.signature"
-					@changed="reload" />
-				<ImageSetting kind="stamp"
-					label="Stempel"
-					:present="images.stamp"
-					@changed="reload" />
-			</section>
-
-			<section>
-				<h3>Ablage</h3>
-				<p class="dr-muted">
-					In beiden Hauptordnern legt die App je Spender einen Unterordner an. Alle Berechtigten
-					brauchen dort Schreibrecht, z. B. über einen Team-Ordner. Im Logo-Ordner landen die
-					Logos aus Rückmeldungen je Aktion; ohne Logo-Ordner bietet das Formular keinen Upload an.
-				</p>
-				<div v-for="(label, variant) in FOLDER_LABELS" :key="variant" class="dr-folder">
-					<div>
-						<strong>{{ label }}</strong>
-						<div :class="folders[variant] ? '' : 'dr-muted'">
-							{{ folders[variant] || 'nicht gewählt' }}
-						</div>
-					</div>
-					<NcButton @click="pickFolder(variant, label)">
-						Ordner wählen
-					</NcButton>
-				</div>
-			</section>
-
-			<section>
-				<h3>Nummernkreis</h3>
-				<p>Format <code>JJJJ-NNNN</code>, jedes Jahr ab 0001. Nächste Nummer: <strong>{{ nextNumber }}</strong></p>
-			</section>
 		</form>
 	</div>
 </template>
@@ -363,6 +378,8 @@ import NcTextField from '@nextcloud/vue/components/NcTextField'
 import { computed, defineAsyncComponent, onMounted, ref } from 'vue'
 import { errorMessage, getSettings, sendTestMail, setMainFolder, testImap, updateSettings } from '../api.js'
 import ImageSetting from '../components/ImageSetting.vue'
+import TabBar from '../components/TabBar.vue'
+import { useTab } from '../useTab.js'
 
 // Tiptap is large: only loaded where a mail text is edited
 const HtmlEditor = defineAsyncComponent(() => import('../components/HtmlEditor.vue'))
@@ -372,6 +389,16 @@ const FOLDER_LABELS = {
 	signed: 'Hauptordner „unterschrieben“',
 	logos: 'Logo-Ordner (optional)',
 }
+
+const TABS = [
+	{ id: 'verein', label: 'Verein & Steuer' },
+	{ id: 'bescheinigungsmail', label: 'Mail Bescheinigungen' },
+	{ id: 'sponsorenmail', label: 'Mail Sponsoren' },
+	{ id: 'rueckmeldung', label: 'Rückmeldeformular' },
+	{ id: 'benachrichtigungen', label: 'Benachrichtigungen' },
+	{ id: 'ablage', label: 'Ablage & Nummern' },
+]
+const tab = useTab(TABS.map((t) => t.id))
 
 const loading = ref(true)
 const saving = ref(false)
@@ -421,6 +448,18 @@ const bescheidAgeWarning = computed(() => {
 		return ''
 	}
 	return `Der Bescheid ist älter als ${statute ? 3 : 5} Jahre. Zuwendungsbestätigungen werden damit steuerlich nicht anerkannt (§ 63 Abs. 5 AO).`
+})
+
+// a dot on the tab where something is still missing
+const tabs = computed(() => {
+	const folderMissing = missing.value.some((m) => m.startsWith('Hauptordner'))
+	const dataMissing = missing.value.some((m) => !m.startsWith('Hauptordner'))
+	const warnings = {
+		verein: dataMissing ? 'Hier fehlen noch Angaben für Bescheinigungen' : '',
+		ablage: folderMissing ? 'Hauptordner fehlen noch' : '',
+		sponsorenmail: sponsorMailMissing.value.length ? 'SMTP-Zugang für Sponsoren unvollständig' : '',
+	}
+	return TABS.map((t) => ({ ...t, warning: warnings[t.id] ?? '' }))
 })
 
 function apply(data) {
@@ -566,6 +605,15 @@ async function save() {
 	align-items: center;
 	justify-content: space-between;
 	gap: calc(var(--default-grid-baseline) * 4);
+}
+
+.dr-save {
+	align-items: center;
+	position: sticky;
+	bottom: 0;
+	padding: calc(var(--default-grid-baseline) * 3) 0;
+	background: var(--color-main-background);
+	border-top: 1px solid var(--color-border);
 }
 
 section {

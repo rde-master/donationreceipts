@@ -94,7 +94,7 @@
 				Erinnerung, höchstens {{ data.reminder.max }}× je Sponsor
 				({{ data.reminder.auto ? 'werden täglich automatisch gesendet' : 'Versand von Hand' }}) –
 				einstellbar unter
-				<RouterLink :to="{ name: 'templates' }">
+				<RouterLink :to="{ name: 'templates', query: { reiter: 'erinnerungen' } }">
 					Vorlagen
 				</RouterLink>.
 			</p>

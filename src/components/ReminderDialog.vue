@@ -29,7 +29,7 @@
 			</p>
 			<p class="dr-muted">
 				Die Texte stehen unter
-				<RouterLink :to="{ name: 'templates' }" @click="$emit('close')">
+				<RouterLink :to="{ name: 'templates', query: { reiter: 'reminder' } }" @click="$emit('close')">
 					Vorlagen
 				</RouterLink>.
 			</p>
