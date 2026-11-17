@@ -1,63 +1,69 @@
 <template>
-	<div class="dr-public">
-		<header class="dr-public__card dr-public__hero">
-			<p class="dr-public__org">
-				{{ state.org }}
-			</p>
-			<h2>{{ state.campaign }}</h2>
-			<p class="dr-public__sponsor">
-				Rückmeldung für <strong>{{ state.sponsor }}</strong>
-			</p>
-			<p v-if="state.intro" class="dr-pre dr-public__intro">
-				{{ state.intro }}
-			</p>
-		</header>
+	<form class="dr-shell" @submit.prevent="submit">
+		<div class="dr-shell__scroll">
+			<div class="dr-public">
+				<header class="dr-public__card dr-public__hero">
+					<p class="dr-public__org">
+						{{ state.org }}
+					</p>
+					<h2>{{ state.campaign }}</h2>
+					<p class="dr-public__sponsor">
+						Rückmeldung für <strong>{{ state.sponsor }}</strong>
+					</p>
+					<p v-if="state.intro" class="dr-pre dr-public__intro">
+						{{ state.intro }}
+					</p>
+				</header>
 
-		<div ref="notes" class="dr-public__notes">
-			<NcNoteCard v-if="state.received" type="success">
-				Ihre Spende ist eingegangen – vielen Dank! Die Zuwendungsbestätigung haben wir Ihnen per E-Mail
-				zugesandt. Änderungen sind nicht mehr möglich.
-			</NcNoteCard>
-			<NcNoteCard v-else-if="state.closed" type="info">
-				Die Aktion ist beendet; Rückmeldungen sind nicht mehr möglich.
-			</NcNoteCard>
-			<NcNoteCard v-else-if="saved" type="success">
-				Vielen Dank! Ihre Angaben sind gespeichert. Sie erhalten eine Bestätigung per E-Mail und können
-				Ihre Angaben über diesen Link ändern, bis Ihre Spende eingegangen ist.
-			</NcNoteCard>
-			<NcNoteCard v-else-if="state.respondedAt" type="info">
-				Ihre Rückmeldung vom {{ formatDateTime(state.respondedAt) }} liegt uns vor. Sie können sie hier
-				ändern, bis Ihre Spende eingegangen ist.
-			</NcNoteCard>
-			<NcNoteCard v-if="logoWarning" type="warning">
-				{{ logoWarning }}
-			</NcNoteCard>
+				<div ref="notes" class="dr-public__notes">
+					<NcNoteCard v-if="state.received" type="success">
+						Ihre Spende ist eingegangen – vielen Dank! Die Zuwendungsbestätigung haben wir Ihnen per E-Mail
+						zugesandt. Änderungen sind nicht mehr möglich.
+					</NcNoteCard>
+					<NcNoteCard v-else-if="state.closed" type="info">
+						Die Aktion ist beendet; Rückmeldungen sind nicht mehr möglich.
+					</NcNoteCard>
+					<NcNoteCard v-else-if="saved" type="success">
+						Vielen Dank! Ihre Angaben sind gespeichert. Sie erhalten eine Bestätigung per E-Mail und können
+						Ihre Angaben über diesen Link ändern, bis Ihre Spende eingegangen ist.
+					</NcNoteCard>
+					<NcNoteCard v-else-if="state.respondedAt" type="info">
+						Ihre Rückmeldung vom {{ formatDateTime(state.respondedAt) }} liegt uns vor. Sie können sie hier
+						ändern, bis Ihre Spende eingegangen ist.
+					</NcNoteCard>
+					<NcNoteCard v-if="logoWarning" type="warning">
+						{{ logoWarning }}
+					</NcNoteCard>
+				</div>
+
+				<div class="dr-public__form">
+					<ResponseFields v-model="form" :tickets="state.tickets" :disabled="!state.editable">
+						<template #publish>
+							<div v-if="form.publish === 'yes' && state.logoUpload" class="dr-logo">
+								<label for="dr-logo-input">
+									Logo hochladen (PNG, JPG, SVG oder PDF, höchstens 10 MB) – optional
+								</label>
+								<input id="dr-logo-input"
+									ref="logoInput"
+									type="file"
+									accept=".png,.jpg,.jpeg,.svg,.pdf,image/png,image/jpeg,image/svg+xml,application/pdf"
+									@change="pickLogo">
+								<p v-if="state.hasLogo" class="dr-muted">
+									Ihr Logo liegt uns bereits vor. Eine neue Datei ersetzt es.
+								</p>
+							</div>
+						</template>
+					</ResponseFields>
+
+					<NcNoteCard v-if="error" type="error">
+						{{ error }}
+					</NcNoteCard>
+				</div>
+			</div>
 		</div>
 
-		<form class="dr-public__form" @submit.prevent="submit">
-			<ResponseFields v-model="form" :tickets="state.tickets" :disabled="!state.editable">
-				<template #publish>
-					<div v-if="form.publish === 'yes' && state.logoUpload" class="dr-logo">
-						<label for="dr-logo-input">
-							Logo hochladen (PNG, JPG, SVG oder PDF, höchstens 10 MB) – optional
-						</label>
-						<input id="dr-logo-input"
-							ref="logoInput"
-							type="file"
-							accept=".png,.jpg,.jpeg,.svg,.pdf,image/png,image/jpeg,image/svg+xml,application/pdf"
-							@change="pickLogo">
-						<p v-if="state.hasLogo" class="dr-muted">
-							Ihr Logo liegt uns bereits vor. Eine neue Datei ersetzt es.
-						</p>
-					</div>
-				</template>
-			</ResponseFields>
-
-			<NcNoteCard v-if="error" type="error">
-				{{ error }}
-			</NcNoteCard>
-
-			<div v-if="state.editable" class="dr-public__submit">
+		<div v-if="state.editable" class="dr-shell__bar">
+			<div class="dr-shell__bar-inner">
 				<p class="dr-public__missing" :class="{ 'dr-public__missing--ok': missing.length === 0 }">
 					<template v-if="missing.length">
 						Noch offen: {{ missing.join(', ') }}
@@ -76,8 +82,8 @@
 					{{ state.respondedAt ? 'Änderungen speichern' : 'Rückmeldung absenden' }}
 				</NcButton>
 			</div>
-		</form>
-	</div>
+		</div>
+	</form>
 </template>
 
 <script setup>
@@ -149,11 +155,26 @@ async function submit() {
 </script>
 
 <style scoped>
+.dr-shell {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	width: 100%;
+}
+
+.dr-shell__scroll {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow-y: auto;
+	overflow-x: hidden;
+}
+
 .dr-public {
 	--dr-gap: calc(var(--default-grid-baseline) * 4);
 	max-width: 760px;
 	margin: 0 auto;
-	padding: calc(var(--default-grid-baseline) * 6) var(--dr-gap) 0;
+	box-sizing: border-box;
+	padding: calc(var(--default-grid-baseline) * 6) var(--dr-gap);
 	display: flex;
 	flex-direction: column;
 	gap: var(--dr-gap);
@@ -226,22 +247,24 @@ async function submit() {
 	font-weight: bold;
 }
 
-/* always reachable: sticks to the bottom of the scrolling #content */
-.dr-public__submit {
-	position: sticky;
-	bottom: 0;
-	z-index: 1;
+/* the bar sits below the scroll area, so it never covers a field */
+.dr-shell__bar {
+	flex: 0 0 auto;
+	background: var(--color-main-background);
+	border-top: 1px solid var(--color-border);
+	box-shadow: 0 -2px 8px var(--color-box-shadow);
+}
+
+.dr-shell__bar-inner {
+	max-width: 760px;
+	margin: 0 auto;
+	box-sizing: border-box;
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
 	flex-wrap: wrap;
 	gap: calc(var(--default-grid-baseline) * 3);
-	margin: 0 calc(var(--dr-gap) * -1);
-	padding: calc(var(--default-grid-baseline) * 3) calc(var(--dr-gap) + var(--default-grid-baseline) * 6);
-	background: var(--color-main-background);
-	border-top: 1px solid var(--color-border);
-	box-shadow: 0 -2px 8px var(--color-box-shadow);
-	border-radius: var(--border-radius-container-large, 16px) var(--border-radius-container-large, 16px) 0 0;
+	padding: calc(var(--default-grid-baseline) * 3) calc(var(--default-grid-baseline) * 4);
 }
 
 .dr-public__missing {
@@ -266,11 +289,7 @@ async function submit() {
 		padding: calc(var(--default-grid-baseline) * 4);
 	}
 
-	.dr-public__submit {
-		padding: calc(var(--default-grid-baseline) * 3) calc(var(--dr-gap) + var(--default-grid-baseline) * 4);
-	}
-
-	.dr-public__submit :deep(.button-vue) {
+	.dr-shell__bar-inner :deep(.button-vue) {
 		width: 100%;
 	}
 }

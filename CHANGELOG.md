@@ -4,6 +4,12 @@ Alle Änderungen der App, neueste zuerst. Versionen nach [SemVer](https://semver
 Fehlerbehebung erhöht die dritte Stelle, neue Funktionen die zweite, mit der Abnahme kommt 1.0.0.
 Jede Version hat einen Git-Tag `v<version>`.
 
+## 0.10.2 – 2026-11-17
+
+- Behoben: Die Absenden-Leiste des Rückmeldeformulars verdeckte das letzte Eingabefeld. Sie hat
+  jetzt einen eigenen Bereich unter dem scrollbaren Formular.
+- Das Rückmeldeformular steht mittig auf der Seite.
+
 ## 0.10.1 – 2026-11-17
 
 - **Rückmeldeformular für Sponsoren überarbeitet**: übersichtliches Karten-Layout (Kopfkarte mit
