@@ -15,7 +15,7 @@
 					</p>
 				</header>
 
-				<div ref="notes" class="dr-public__notes">
+				<div class="dr-public__notes">
 					<NcNoteCard v-if="state.received" type="success">
 						Ihre Spende ist eingegangen – vielen Dank! Die Zuwendungsbestätigung haben wir Ihnen per E-Mail
 						zugesandt. Änderungen sind nicht mehr möglich.
@@ -23,16 +23,9 @@
 					<NcNoteCard v-else-if="state.closed" type="info">
 						Die Aktion ist beendet; Rückmeldungen sind nicht mehr möglich.
 					</NcNoteCard>
-					<NcNoteCard v-else-if="saved" type="success">
-						Vielen Dank! Ihre Angaben sind gespeichert. Sie erhalten eine Bestätigung per E-Mail und können
-						Ihre Angaben über diesen Link ändern, bis Ihre Spende eingegangen ist.
-					</NcNoteCard>
 					<NcNoteCard v-else-if="state.respondedAt" type="info">
 						Ihre Rückmeldung vom {{ formatDateTime(state.respondedAt) }} liegt uns vor. Sie können sie hier
 						ändern, bis Ihre Spende eingegangen ist.
-					</NcNoteCard>
-					<NcNoteCard v-if="logoWarning" type="warning">
-						{{ logoWarning }}
 					</NcNoteCard>
 				</div>
 
@@ -54,15 +47,24 @@
 							</div>
 						</template>
 					</ResponseFields>
-
-					<NcNoteCard v-if="error" type="error">
-						{{ error }}
-					</NcNoteCard>
 				</div>
 			</div>
 		</div>
 
 		<div v-if="state.editable" class="dr-shell__bar">
+			<!-- results of saving right above the button, where the user looks -->
+			<div v-if="saved || error || logoWarning" class="dr-shell__messages">
+				<NcNoteCard v-if="saved" type="success">
+					Vielen Dank! Ihre Angaben sind gespeichert. Sie erhalten eine Bestätigung per E-Mail und können
+					Ihre Angaben über diesen Link ändern, bis Ihre Spende eingegangen ist.
+				</NcNoteCard>
+				<NcNoteCard v-if="logoWarning" type="warning">
+					{{ logoWarning }}
+				</NcNoteCard>
+				<NcNoteCard v-if="error" type="error">
+					{{ error }}
+				</NcNoteCard>
+			</div>
 			<div class="dr-shell__bar-inner">
 				<p class="dr-public__missing" :class="{ 'dr-public__missing--ok': missing.length === 0 }">
 					<template v-if="missing.length">
@@ -93,7 +95,7 @@ import { generateUrl } from '@nextcloud/router'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
 import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { errorMessage } from '../api.js'
 import ResponseFields from '../components/ResponseFields.vue'
 import { formatDateTime } from '../format.js'
@@ -109,10 +111,14 @@ const saving = ref(false)
 const saved = ref(false)
 const error = ref('')
 const logoWarning = ref('')
-const notes = ref(null)
 
 // what still keeps the submit button disabled, shown next to it
 const missing = computed(() => responseMissing(form.value))
+
+// a new change is not saved yet
+watch(form, () => {
+	saved.value = false
+}, { deep: true })
 
 function pickLogo(event) {
 	const file = event.target.files?.[0] ?? null
@@ -144,8 +150,6 @@ async function submit() {
 		if (logoInput.value) {
 			logoInput.value.value = ''
 		}
-		// #content is the scroll container of the public layout
-		notes.value?.scrollIntoView({ behavior: 'smooth', block: 'center' })
 	} catch (e) {
 		error.value = errorMessage(e)
 	} finally {
@@ -253,6 +257,17 @@ async function submit() {
 	background: var(--color-main-background);
 	border-top: 1px solid var(--color-border);
 	box-shadow: 0 -2px 8px var(--color-box-shadow);
+}
+
+.dr-shell__messages {
+	max-width: 760px;
+	margin: 0 auto;
+	box-sizing: border-box;
+	padding: calc(var(--default-grid-baseline) * 3) calc(var(--default-grid-baseline) * 4) 0;
+}
+
+.dr-shell__messages :deep(.notecard) {
+	margin: 0 0 var(--default-grid-baseline);
 }
 
 .dr-shell__bar-inner {

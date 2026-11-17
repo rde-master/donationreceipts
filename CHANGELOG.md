@@ -4,6 +4,13 @@ Alle Änderungen der App, neueste zuerst. Versionen nach [SemVer](https://semver
 Fehlerbehebung erhöht die dritte Stelle, neue Funktionen die zweite, mit der Abnahme kommt 1.0.0.
 Jede Version hat einen Git-Tag `v<version>`.
 
+## 0.11.1 – 2026-11-17
+
+- Rückmeldeformular: Die Meldung nach dem Speichern („Vielen Dank! Ihre Angaben sind
+  gespeichert …“) sowie Fehler- und Logo-Hinweise erscheinen jetzt unten direkt über dem
+  Absenden-Button statt oben auf der Seite. Nach einer weiteren Änderung verschwindet die
+  Erfolgsmeldung wieder.
+
 ## 0.11.0 – 2026-11-17
 
 - Neues Feld **„Spendenbescheinigung senden an (E-Mail)“** im Rückmeldeformular und in der
