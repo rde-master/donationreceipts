@@ -4,6 +4,16 @@ Alle Änderungen der App, neueste zuerst. Versionen nach [SemVer](https://semver
 Fehlerbehebung erhöht die dritte Stelle, neue Funktionen die zweite, mit der Abnahme kommt 1.0.0.
 Jede Version hat einen Git-Tag `v<version>`.
 
+## 0.10.1 – 2026-11-17
+
+- **Rückmeldeformular für Sponsoren überarbeitet**: übersichtliches Karten-Layout (Kopfkarte mit
+  Verein, Aktion und Einleitung, je Abschnitt eine Karte), ruhiger Hintergrund statt des
+  Nextcloud-Hintergrundbilds, Kopfzeile in der Theming-Farbe.
+- Behoben: Die Seite ließ sich nicht scrollen, dadurch war der Absenden-Button nicht erreichbar.
+  Der Button sitzt jetzt in einer festen Leiste am unteren Rand und zeigt an, welche Angaben noch
+  fehlen.
+- Die Nextcloud-Werbezeile unter dem Formular ist ausgeblendet.
+
 ## 0.10.0 – 2026-10-31
 
 - „Sponsoren“ heißen jetzt **„Mögliche Sponsoren“**.

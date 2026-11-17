@@ -1,0 +1,32 @@
+/*
+ * Page frame of the public response form (loaded only there, so global
+ * selectors are safe). Nextcloud's public layout shows the theming background
+ * image, a fixed-height #content without scrolling and an advert footer.
+ */
+#body-public {
+	/* calm surface instead of the background image; the header stays readable */
+	background-image: none !important;
+	background-color: var(--color-background-dark) !important;
+}
+
+#body-public #header {
+	background-color: var(--color-primary-element);
+	--color-background-plain-text: var(--color-primary-element-text);
+}
+
+#body-public #header,
+#body-public #header * {
+	color: var(--color-primary-element-text);
+}
+
+#body-public #content {
+	background: transparent;
+	backdrop-filter: none;
+	overflow-y: auto;
+	overflow-x: hidden;
+}
+
+/* fallback in case the server still renders the footer */
+#body-public footer {
+	display: none !important;
+}

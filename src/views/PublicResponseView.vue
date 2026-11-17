@@ -1,33 +1,40 @@
 <template>
 	<div class="dr-public">
-		<h2>{{ state.campaign }}</h2>
-		<p class="dr-muted">
-			Rückmeldung für {{ state.sponsor }}
-		</p>
-		<p class="dr-pre dr-intro">
-			{{ state.intro }}
-		</p>
+		<header class="dr-public__card dr-public__hero">
+			<p class="dr-public__org">
+				{{ state.org }}
+			</p>
+			<h2>{{ state.campaign }}</h2>
+			<p class="dr-public__sponsor">
+				Rückmeldung für <strong>{{ state.sponsor }}</strong>
+			</p>
+			<p v-if="state.intro" class="dr-pre dr-public__intro">
+				{{ state.intro }}
+			</p>
+		</header>
 
-		<NcNoteCard v-if="state.received" type="success">
-			Ihre Spende ist eingegangen – vielen Dank! Die Zuwendungsbestätigung haben wir Ihnen per E-Mail
-			zugesandt. Änderungen sind nicht mehr möglich.
-		</NcNoteCard>
-		<NcNoteCard v-else-if="state.closed" type="info">
-			Die Aktion ist beendet; Rückmeldungen sind nicht mehr möglich.
-		</NcNoteCard>
-		<NcNoteCard v-else-if="saved" type="success">
-			Vielen Dank! Ihre Angaben sind gespeichert. Sie erhalten eine Bestätigung per E-Mail und können
-			Ihre Angaben über diesen Link ändern, bis Ihre Spende eingegangen ist.
-		</NcNoteCard>
-		<NcNoteCard v-else-if="state.respondedAt" type="info">
-			Ihre Rückmeldung vom {{ formatDateTime(state.respondedAt) }} liegt uns vor. Sie können sie hier
-			ändern, bis Ihre Spende eingegangen ist.
-		</NcNoteCard>
-		<NcNoteCard v-if="logoWarning" type="warning">
-			{{ logoWarning }}
-		</NcNoteCard>
+		<div ref="notes" class="dr-public__notes">
+			<NcNoteCard v-if="state.received" type="success">
+				Ihre Spende ist eingegangen – vielen Dank! Die Zuwendungsbestätigung haben wir Ihnen per E-Mail
+				zugesandt. Änderungen sind nicht mehr möglich.
+			</NcNoteCard>
+			<NcNoteCard v-else-if="state.closed" type="info">
+				Die Aktion ist beendet; Rückmeldungen sind nicht mehr möglich.
+			</NcNoteCard>
+			<NcNoteCard v-else-if="saved" type="success">
+				Vielen Dank! Ihre Angaben sind gespeichert. Sie erhalten eine Bestätigung per E-Mail und können
+				Ihre Angaben über diesen Link ändern, bis Ihre Spende eingegangen ist.
+			</NcNoteCard>
+			<NcNoteCard v-else-if="state.respondedAt" type="info">
+				Ihre Rückmeldung vom {{ formatDateTime(state.respondedAt) }} liegt uns vor. Sie können sie hier
+				ändern, bis Ihre Spende eingegangen ist.
+			</NcNoteCard>
+			<NcNoteCard v-if="logoWarning" type="warning">
+				{{ logoWarning }}
+			</NcNoteCard>
+		</div>
 
-		<form @submit.prevent="submit">
+		<form class="dr-public__form" @submit.prevent="submit">
 			<ResponseFields v-model="form" :tickets="state.tickets" :disabled="!state.editable">
 				<template #publish>
 					<div v-if="form.publish === 'yes' && state.logoUpload" class="dr-logo">
@@ -49,14 +56,24 @@
 			<NcNoteCard v-if="error" type="error">
 				{{ error }}
 			</NcNoteCard>
-			<div v-if="state.editable" class="dr-actions">
+
+			<div v-if="state.editable" class="dr-public__submit">
+				<p class="dr-public__missing" :class="{ 'dr-public__missing--ok': missing.length === 0 }">
+					<template v-if="missing.length">
+						Noch offen: {{ missing.join(', ') }}
+					</template>
+					<template v-else>
+						Alle Angaben vollständig.
+					</template>
+				</p>
 				<NcButton type="submit"
 					variant="primary"
-					:disabled="saving || !responseComplete(form)">
+					size="large"
+					:disabled="saving || missing.length > 0">
 					<template #icon>
 						<NcLoadingIcon v-if="saving" :size="20" />
 					</template>
-					{{ state.respondedAt ? 'Änderungen speichern' : 'Absenden' }}
+					{{ state.respondedAt ? 'Änderungen speichern' : 'Rückmeldung absenden' }}
 				</NcButton>
 			</div>
 		</form>
@@ -70,11 +87,11 @@ import { generateUrl } from '@nextcloud/router'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
 import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { errorMessage } from '../api.js'
 import ResponseFields from '../components/ResponseFields.vue'
 import { formatDateTime } from '../format.js'
-import { responseComplete, responseForm, responsePayload } from '../responseForm.js'
+import { responseMissing, responseForm, responsePayload } from '../responseForm.js'
 
 const MAX_LOGO_BYTES = 10 * 1024 * 1024
 
@@ -86,6 +103,10 @@ const saving = ref(false)
 const saved = ref(false)
 const error = ref('')
 const logoWarning = ref('')
+const notes = ref(null)
+
+// what still keeps the submit button disabled, shown next to it
+const missing = computed(() => responseMissing(form.value))
 
 function pickLogo(event) {
 	const file = event.target.files?.[0] ?? null
@@ -117,7 +138,8 @@ async function submit() {
 		if (logoInput.value) {
 			logoInput.value.value = ''
 		}
-		window.scrollTo({ top: 0, behavior: 'smooth' })
+		// #content is the scroll container of the public layout
+		notes.value?.scrollIntoView({ behavior: 'smooth', block: 'center' })
 	} catch (e) {
 		error.value = errorMessage(e)
 	} finally {
@@ -128,18 +150,128 @@ async function submit() {
 
 <style scoped>
 .dr-public {
-	max-width: 700px;
+	--dr-gap: calc(var(--default-grid-baseline) * 4);
+	max-width: 760px;
 	margin: 0 auto;
-	padding: calc(var(--default-grid-baseline) * 6) calc(var(--default-grid-baseline) * 4);
+	padding: calc(var(--default-grid-baseline) * 6) var(--dr-gap) 0;
+	display: flex;
+	flex-direction: column;
+	gap: var(--dr-gap);
 }
 
-.dr-intro {
-	margin: calc(var(--default-grid-baseline) * 4) 0;
+.dr-public__card,
+.dr-public :deep(.dr-response-fields section) {
+	background: var(--color-main-background);
+	color: var(--color-main-text);
+	border-radius: var(--border-radius-container-large, 16px);
+	box-shadow: 0 1px 4px var(--color-box-shadow);
+	padding: calc(var(--default-grid-baseline) * 5) calc(var(--default-grid-baseline) * 6);
+}
+
+.dr-public__hero {
+	border-top: 6px solid var(--color-primary-element);
+}
+
+.dr-public__hero h2 {
+	margin: 0;
+	font-size: 26px;
+	line-height: 1.3;
+}
+
+.dr-public__org {
+	margin: 0 0 var(--default-grid-baseline);
+	color: var(--color-text-maxcontrast);
+	text-transform: uppercase;
+	letter-spacing: .05em;
+	font-size: var(--font-size-small, 13px);
+}
+
+.dr-public__sponsor {
+	margin: var(--default-grid-baseline) 0 0;
+	color: var(--color-text-maxcontrast);
+}
+
+.dr-public__intro {
+	margin: calc(var(--default-grid-baseline) * 4) 0 0;
+	padding-top: calc(var(--default-grid-baseline) * 4);
+	border-top: 1px solid var(--color-border);
+	line-height: 1.6;
+}
+
+.dr-public__notes:empty {
+	display: none;
+}
+
+.dr-public__notes :deep(.notecard) {
+	margin: 0;
+}
+
+.dr-public__form {
+	display: flex;
+	flex-direction: column;
+	gap: var(--dr-gap);
+}
+
+.dr-public :deep(.dr-response-fields section) {
+	margin-bottom: var(--dr-gap);
+}
+
+.dr-public :deep(.dr-response-fields section:last-child) {
+	margin-bottom: 0;
+}
+
+.dr-public :deep(.dr-response-fields h3) {
+	margin: 0 0 var(--default-grid-baseline);
+	font-size: 18px;
+	font-weight: bold;
+}
+
+/* always reachable: sticks to the bottom of the scrolling #content */
+.dr-public__submit {
+	position: sticky;
+	bottom: 0;
+	z-index: 1;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	flex-wrap: wrap;
+	gap: calc(var(--default-grid-baseline) * 3);
+	margin: 0 calc(var(--dr-gap) * -1);
+	padding: calc(var(--default-grid-baseline) * 3) calc(var(--dr-gap) + var(--default-grid-baseline) * 6);
+	background: var(--color-main-background);
+	border-top: 1px solid var(--color-border);
+	box-shadow: 0 -2px 8px var(--color-box-shadow);
+	border-radius: var(--border-radius-container-large, 16px) var(--border-radius-container-large, 16px) 0 0;
+}
+
+.dr-public__missing {
+	margin: 0;
+	flex: 1 1 260px;
+	color: var(--color-text-maxcontrast);
+}
+
+.dr-public__missing--ok {
+	color: var(--color-success-text);
 }
 
 .dr-logo {
 	display: flex;
 	flex-direction: column;
 	gap: var(--default-grid-baseline);
+}
+
+@media (max-width: 600px) {
+	.dr-public__card,
+	.dr-public :deep(.dr-response-fields section) {
+		padding: calc(var(--default-grid-baseline) * 4);
+	}
+
+	.dr-public__submit {
+		padding: calc(var(--default-grid-baseline) * 3) calc(var(--dr-gap) + var(--default-grid-baseline) * 4);
+	}
+
+	.dr-public__submit :deep(.button-vue) {
+		width: 100%;
+	}
 }
 </style>

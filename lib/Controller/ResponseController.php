@@ -57,6 +57,8 @@ class ResponseController extends Controller {
         $response = new PublicTemplateResponse(Application::APP_ID, 'public');
         $response->setHeaderTitle($view['campaign']);
         $response->setHeaderDetails($view['org']);
+        // no "Nextcloud – ein sicherer Ort …" advert below the form
+        $response->setFooterVisible(false);
         return $response;
     }
 
