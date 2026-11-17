@@ -4,6 +4,13 @@ Alle Änderungen der App, neueste zuerst. Versionen nach [SemVer](https://semver
 Fehlerbehebung erhöht die dritte Stelle, neue Funktionen die zweite, mit der Abnahme kommt 1.0.0.
 Jede Version hat einen Git-Tag `v<version>`.
 
+## 0.20.0 – 2026-11-17
+
+- **Vorschau der Bescheinigung**: Die Ansicht einer Bescheinigung zeigt die PDF direkt neben den
+  Angaben (auf schmalen Bildschirmen darunter), umschaltbar zwischen „mit Unterschrift“ und „ohne
+  Unterschrift“. Nach einer Änderung wird die neue Fassung gezeigt, nicht eine aus dem Cache.
+- Dafür erlaubt die App-Seite eingebettete Inhalte von der eigenen Nextcloud (CSP `frame-src 'self'`).
+
 ## 0.19.0 – 2026-11-17
 
 - **Spender**: Übersicht mit Kacheln (Spender mit Firmen/Privat, mit Bescheinigung und Summe,

@@ -8,6 +8,7 @@ use OCA\DonationReceipts\AppInfo\Application;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
+use OCP\AppFramework\Http\ContentSecurityPolicy;
 use OCP\AppFramework\Http\TemplateResponse;
 use OCP\IRequest;
 use OCP\Util;
@@ -21,6 +22,11 @@ class PageController extends Controller {
     #[NoCSRFRequired]
     public function index(): TemplateResponse {
         Util::addScript(Application::APP_ID, Application::APP_ID . '-main');
-        return new TemplateResponse(Application::APP_ID, 'main');
+        $response = new TemplateResponse(Application::APP_ID, 'main');
+        // the receipt view shows the PDF (from this app) in a frame
+        $csp = new ContentSecurityPolicy();
+        $csp->addAllowedFrameDomain("'self'");
+        $response->setContentSecurityPolicy($csp);
+        return $response;
     }
 }
